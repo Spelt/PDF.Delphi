@@ -1,6 +1,32 @@
 # PDF.Delphi
 
+<p align="center">
+  <img src="docs/images/pdf-delphi-hero.png" alt="PDF.Delphi — the native PDF library for Delphi" width="100%">
+</p>
+
 A PDF renderer written in Delphi that renders identically on every FMX and VCL platforms. Skia does the drawing; the parser, the graphics interpreter and thefont engine are our own code, with no native third-party libraries. Pdf.js (Apache 2.0) served as the reference for structure and edge cases.
+
+## Quick start
+
+<p align="center">
+  <img src="docs/images/pdf-delphi-quickstart.png" alt="PDF.Delphi quick start" width="100%">
+</p>
+
+1. Add all the source folders to your search path
+2. Drop a `TPdfViewer` on your form
+3. Add the code to the `FormCreate` event and then run your application
+
+```pascal
+uses
+  FMX.Forms, System.Classes, FMX.Types, FMX.Controls,
+  System.Skia, FMX.Skia, FMX.PdfViewer;
+
+procedure TForm1.FormCreate(Sender: TObject);
+begin
+  PdfViewer1.LoadFromFile('manual.pdf');
+  PdfViewer1.ZoomMode := zmFitWidth;
+end;
+```
 
 ## Requirements
 
