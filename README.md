@@ -88,7 +88,7 @@ Further viewer features:
 
 ## Demo
 
-`Demo\PdfViewerDemo.dproj` is a complete viewer built on the two controls,
+`DemoFMX\PdfViewerDemo.dproj` is a complete desktop viewer built on the two controls,
 with everything placed at design time: an icon toolbar with page field and
 zoom slider, a sidebar with thumbnails, bookmarks, search results and
 document properties, a status bar, light and dark theme (the dark theme is
@@ -102,6 +102,11 @@ overlay (F1). Settings persist in `%APPDATA%\PdfViewerDemo\settings.ini`.
 strip and the viewer, placed at design time (install `PdfViewerVCLDsgn`
 first). Files open from the button, Ctrl+O, drag and drop or the command
 line.
+
+`DemoMobile\PdfViewerMobileDemo.dproj` is a minimal FMX demo for Android and
+iOS (it also runs on Windows): it opens the sample `test.pdf`, embedded as a
+resource so that nothing has to be deployed, with pinch to zoom, double tap,
+dragging, a fit-width button and previous/next page buttons.
 
 
 ## PDF.Delphi

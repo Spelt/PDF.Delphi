@@ -1,0 +1,2 @@
+// The demo PDF, embedded in the executable so that it needs no deployment on Android or iOS.
+TEST_PDF RCDATA "test.pdf"

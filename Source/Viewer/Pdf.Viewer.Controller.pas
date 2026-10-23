@@ -655,13 +655,11 @@ begin
 end;
 
 procedure TPdfViewerController.UpdateScrollBars;
-var
-  NeedV, NeedH: Boolean;
-begin
-  if FUpdatingScrollBars then
-    Exit;
-  FUpdatingScrollBars := True;
-  try
+
+  procedure DecideBars;
+  var
+    NeedV, NeedH: Boolean;
+  begin
     // Two passes: showing one bar can make the other necessary
     FVBarVisible := False;
     FHBarVisible := False;
@@ -676,6 +674,21 @@ begin
     FVBarVisible := NeedV and (FLayout.PageCount > 0);
     FHBarVisible := NeedH and (FLayout.PageCount > 0);
     UpdateLayoutViewport;
+  end;
+
+begin
+  if FUpdatingScrollBars then
+    Exit;
+  FUpdatingScrollBars := True;
+  try
+    DecideBars;
+    // A fit mode may have chosen its zoom for the viewport without scroll bars: refit once for the
+    // space the bars leave, otherwise fit-width shows a needless horizontal bar
+    if (FZoomMode <> zmCustom) and (FVBarVisible or FHBarVisible) then
+    begin
+      ApplyZoomMode;
+      DecideBars;
+    end;
     FScrollX := FLayout.ClampScrollX(FScrollX);
     FScrollY := FLayout.ClampScrollY(FScrollY);
     SyncHostScrollBars;

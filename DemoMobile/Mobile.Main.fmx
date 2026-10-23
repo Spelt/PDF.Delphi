@@ -1,0 +1,90 @@
+object MainForm: TMainForm
+  Left = 0
+  Top = 0
+  Caption = 'PDF Viewer'
+  ClientHeight = 720
+  ClientWidth = 390
+  FormFactor.Width = 320
+  FormFactor.Height = 480
+  FormFactor.Devices = [Desktop]
+  OnCreate = FormCreate
+  OnSafeAreaChanged = FormSafeAreaChanged
+  DesignerMasterStyle = 0
+  object TopBar: TToolBar
+    Size.Width = 390.000000000000000000
+    Size.Height = 48.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 0
+    object TitleLabel: TLabel
+      Align = Client
+      StyledSettings = [Family, FontColor]
+      Margins.Left = 12.000000000000000000
+      Size.Width = 298.000000000000000000
+      Size.Height = 48.000000000000000000
+      Size.PlatformDefault = False
+      TextSettings.Font.Size = 16.000000000000000000
+      Text = 'PDF Viewer'
+      TabOrder = 0
+    end
+    object FitButton: TSpeedButton
+      Align = Right
+      Position.X = 310.000000000000000000
+      Size.Width = 80.000000000000000000
+      Size.Height = 48.000000000000000000
+      Size.PlatformDefault = False
+      Text = 'Passend'
+      OnClick = FitButtonClick
+    end
+  end
+  object BottomBar: TToolBar
+    Align = Bottom
+    Position.Y = 664.000000000000000000
+    Size.Width = 390.000000000000000000
+    Size.Height = 56.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 1
+    object PrevButton: TSpeedButton
+      Align = Left
+      Size.Width = 72.000000000000000000
+      Size.Height = 56.000000000000000000
+      Size.PlatformDefault = False
+      StyledSettings = [Family, FontColor]
+      TextSettings.Font.Size = 20.000000000000000000
+      Text = #9664
+      OnClick = PrevButtonClick
+    end
+    object PageLabel: TLabel
+      Align = Client
+      StyledSettings = [Family, FontColor]
+      Size.Width = 246.000000000000000000
+      Size.Height = 56.000000000000000000
+      Size.PlatformDefault = False
+      TextSettings.Font.Size = 16.000000000000000000
+      TextSettings.HorzAlign = Center
+      Text = '- / -'
+      TabOrder = 0
+    end
+    object NextButton: TSpeedButton
+      Align = Right
+      Position.X = 318.000000000000000000
+      Size.Width = 72.000000000000000000
+      Size.Height = 56.000000000000000000
+      Size.PlatformDefault = False
+      StyledSettings = [Family, FontColor]
+      TextSettings.Font.Size = 20.000000000000000000
+      Text = #9654
+      OnClick = NextButtonClick
+    end
+  end
+  object Viewer: TPdfViewer
+    Align = Client
+    Size.Width = 390.000000000000000000
+    Size.Height = 616.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 2
+    PageGap = 6.000000000000000000
+    PageMargin = 6.000000000000000000
+    OnPageChange = ViewerPageChange
+    TextSelectionEnabled = False
+  end
+end
