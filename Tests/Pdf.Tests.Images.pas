@@ -436,21 +436,25 @@ var
   IsStencil: Boolean;
   Reason: string;
 begin
+  // Fase 5: JPX is decoded by Pdf.Codec.JPX; garbage data gives nil with a reason, never an exception
   Assert.IsNull(Decode(MakeImage('<< /Width 4 /Height 4 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /JPXDecode >>',
     TBytes.Create(0, 0, 0, $0C, $6A, $50)), IsStencil, Reason));
-  Assert.AreEqual('JPXDecode not supported', Reason);
+  Assert.IsTrue(Reason.StartsWith('JPX'), Reason);
 end;
 
 procedure TImageDecoderTests.JBIG2NotSupported;
 var
   IsStencil: Boolean;
   Reason: string;
+  Img: ISkImage;
 begin
+  // Fase 5: JBIG2 and CCITT are decoded by Pdf.Codec.*; empty or garbage data must not raise
   Assert.IsNull(Decode(MakeImage('<< /Width 4 /Height 4 /ImageMask true /Filter [/AHx /JBIG2Decode] >>',
     nil), IsStencil, Reason));
-  Assert.Contains(Reason, 'not supported');
-  Assert.IsNull(Decode(MakeImage('<< /W 4 /H 4 /IM true /F /CCF >>', TBytes.Create(1)), IsStencil, Reason));
-  Assert.AreEqual('CCITTFaxDecode not supported', Reason);
+  Assert.IsTrue(Reason <> '', 'a reason is given');
+  Img := Decode(MakeImage('<< /W 4 /H 4 /IM true /F /CCF >>', TBytes.Create(1)), IsStencil, Reason);
+  // one byte of fax data: either a (white) image or nil with a reason
+  Assert.IsTrue((Img <> nil) or (Reason <> ''));
 end;
 
 procedure TImageDecoderTests.BadBitsPerComponent;

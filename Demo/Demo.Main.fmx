@@ -5,6 +5,7 @@ object MainForm: TMainForm
   ClientHeight = 700
   ClientWidth = 960
   Position = ScreenCenter
+  Quality = HighQuality
   FormFactor.Width = 320
   FormFactor.Height = 480
   FormFactor.Devices = [Desktop]
@@ -33,7 +34,7 @@ object MainForm: TMainForm
       Margins.Left = 12.000000000000000000
       Margins.Top = 4.000000000000000000
       Margins.Bottom = 4.000000000000000000
-      Position.X = 92.000000000000000000
+      Position.X = 88.000000000000000000
       Position.Y = 4.000000000000000000
       Size.Width = 32.000000000000000000
       Size.Height = 32.000000000000000000
@@ -44,7 +45,7 @@ object MainForm: TMainForm
     object PageLabel: TLabel
       Align = Left
       Margins.Left = 4.000000000000000000
-      Position.X = 128.000000000000000000
+      Position.X = 124.000000000000000000
       Size.Width = 72.000000000000000000
       Size.Height = 40.000000000000000000
       Size.PlatformDefault = False
@@ -56,7 +57,7 @@ object MainForm: TMainForm
       Align = Left
       Margins.Top = 4.000000000000000000
       Margins.Bottom = 4.000000000000000000
-      Position.X = 200.000000000000000000
+      Position.X = 196.000000000000000000
       Position.Y = 4.000000000000000000
       Size.Width = 32.000000000000000000
       Size.Height = 32.000000000000000000
@@ -69,7 +70,7 @@ object MainForm: TMainForm
       Margins.Left = 12.000000000000000000
       Margins.Top = 4.000000000000000000
       Margins.Bottom = 4.000000000000000000
-      Position.X = 244.000000000000000000
+      Position.X = 240.000000000000000000
       Position.Y = 4.000000000000000000
       Size.Width = 32.000000000000000000
       Size.Height = 32.000000000000000000
@@ -79,7 +80,7 @@ object MainForm: TMainForm
     end
     object ZoomLabel: TLabel
       Align = Left
-      Position.X = 276.000000000000000000
+      Position.X = 272.000000000000000000
       Size.Width = 56.000000000000000000
       Size.Height = 40.000000000000000000
       Size.PlatformDefault = False
@@ -91,7 +92,7 @@ object MainForm: TMainForm
       Align = Left
       Margins.Top = 4.000000000000000000
       Margins.Bottom = 4.000000000000000000
-      Position.X = 332.000000000000000000
+      Position.X = 328.000000000000000000
       Position.Y = 4.000000000000000000
       Size.Width = 32.000000000000000000
       Size.Height = 32.000000000000000000
@@ -104,7 +105,7 @@ object MainForm: TMainForm
       Margins.Left = 12.000000000000000000
       Margins.Top = 4.000000000000000000
       Margins.Bottom = 4.000000000000000000
-      Position.X = 376.000000000000000000
+      Position.X = 372.000000000000000000
       Position.Y = 4.000000000000000000
       Size.Width = 80.000000000000000000
       Size.Height = 32.000000000000000000
@@ -117,7 +118,7 @@ object MainForm: TMainForm
       Margins.Left = 4.000000000000000000
       Margins.Top = 4.000000000000000000
       Margins.Bottom = 4.000000000000000000
-      Position.X = 460.000000000000000000
+      Position.X = 456.000000000000000000
       Position.Y = 4.000000000000000000
       Size.Width = 80.000000000000000000
       Size.Height = 32.000000000000000000
@@ -125,16 +126,85 @@ object MainForm: TMainForm
       Text = 'Pagina'
       OnClick = FitPageButtonClick
     end
+    object OutlineButton: TSpeedButton
+      Align = Left
+      Enabled = False
+      Margins.Left = 12.000000000000000000
+      Margins.Top = 4.000000000000000000
+      Margins.Bottom = 4.000000000000000000
+      Position.X = 556.000000000000000000
+      Position.Y = 4.000000000000000000
+      Size.Width = 90.000000000000000000
+      Size.Height = 32.000000000000000000
+      Size.PlatformDefault = False
+      Text = 'Bladwijzers'
+      OnClick = OutlineButtonClick
+    end
+    object SearchEdit: TEdit
+      Touch.InteractiveGestures = [LongTap, DoubleTap]
+      Align = Right
+      TabOrder = 10
+      TextPrompt = 'Zoeken (Enter)'
+      Margins.Top = 6.000000000000000000
+      Margins.Right = 4.000000000000000000
+      Margins.Bottom = 6.000000000000000000
+      Position.X = 724.000000000000000000
+      Position.Y = 6.000000000000000000
+      Size.Width = 160.000000000000000000
+      Size.Height = 28.000000000000000000
+      Size.PlatformDefault = False
+      OnKeyDown = SearchEditKeyDown
+    end
+    object FindPrevButton: TSpeedButton
+      Align = Right
+      Margins.Top = 4.000000000000000000
+      Margins.Bottom = 4.000000000000000000
+      Position.X = 888.000000000000000000
+      Position.Y = 4.000000000000000000
+      Size.Width = 32.000000000000000000
+      Size.Height = 32.000000000000000000
+      Size.PlatformDefault = False
+      Text = #9650
+      OnClick = FindPrevButtonClick
+    end
+    object FindNextButton: TSpeedButton
+      Align = Right
+      Margins.Top = 4.000000000000000000
+      Margins.Right = 4.000000000000000000
+      Margins.Bottom = 4.000000000000000000
+      Position.X = 920.000000000000000000
+      Position.Y = 4.000000000000000000
+      Size.Width = 32.000000000000000000
+      Size.Height = 32.000000000000000000
+      Size.PlatformDefault = False
+      Text = #9660
+      OnClick = FindNextButtonClick
+    end
     object StatusLabel: TLabel
       Align = Client
       Margins.Left = 16.000000000000000000
       Margins.Right = 8.000000000000000000
-      Size.Width = 392.000000000000000000
+      Size.Width = 400.000000000000000000
       Size.Height = 40.000000000000000000
       Size.PlatformDefault = False
-      Text = ''
       TabOrder = 9
     end
+  end
+  object OutlineList: TListBox
+    Align = Left
+    Position.Y = 40.000000000000000000
+    Size.Width = 260.000000000000000000
+    Size.Height = 660.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 1
+    Visible = False
+    DisableFocusEffect = True
+    DefaultItemStyles.ItemStyle = ''
+    DefaultItemStyles.GroupHeaderStyle = ''
+    DefaultItemStyles.GroupFooterStyle = ''
+    OnItemClick = OutlineListItemClick
+    Viewport.Width = 256.000000000000000000
+    Viewport.Height = 656.000000000000000000
   end
   object OpenDialog: TOpenDialog
     DefaultExt = 'pdf'

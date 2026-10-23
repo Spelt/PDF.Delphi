@@ -66,7 +66,9 @@ type
     FVertical: Boolean;
     FDefaultVY, FDefaultW1: Double;
     FCIDVertical: TDictionary<Integer, TArray<Double>>; // cid -> [w1, vx, vy]
-    FToUnicode: TPdfCMap;             // owned, for substitution of non-embedded CID fonts
+    FToUnicode: TPdfCMap;             // owned: /ToUnicode (loaded lazily)
+    FToUnicodeLoaded: Boolean;
+    FAscent, FDescent: Double;
     FCIDIsGID: Boolean;               // CIDFontType0 with a non-CID-keyed CFF
     // type3
     FFontMatrix: TPdfMatrix;
@@ -92,6 +94,7 @@ type
     function ProgramAdvance(GID: Integer): Double;
     function GetIsType3: Boolean;
     function GetHasProgram: Boolean;
+    procedure EnsureToUnicode;
     /// <summary>True when GID is a usable glyph. Glyph 0 is .notdef in TrueType and CFF, but a Type1 subset
     /// may well have a real glyph (e.g. 'A') as its first charstring.</summary>
     function Found(GID: Integer): Boolean; inline;
@@ -105,6 +108,12 @@ type
     function GetOutline(GID: Integer; out Outline: TPdfGlyphOutline): Boolean;
     /// <summary>Type3: the glyph procedure for a code (nil when absent).</summary>
     function Type3GlyphProc(Code: Integer): IPdfStream;
+    /// <summary>Unicode text of a decoded glyph: /ToUnicode, then the glyph name through the Adobe Glyph List,
+    /// then the code itself for simple fonts. '' when unknown.</summary>
+    function GlyphUnicode(const G: TPdfGlyphInfo): string;
+    /// <summary>Typographic ascent/descent in text space (em units) from the descriptor; defaults 0.75 and -0.25.</summary>
+    property Ascent: Double read FAscent;
+    property Descent: Double read FDescent;
     property Kind: TPdfFontKind read FKind;
     property BaseFont: string read FBaseFont;
     property Flags: Integer read FFlags;
@@ -173,6 +182,8 @@ begin
   FDefaultWidth := 1;
   FDefaultVY := 0.88;
   FDefaultW1 := -1;
+  FAscent := 0.75;
+  FDescent := -0.25;
   for I := 0 to 255 do
     FCodeToGID[I] := -2;
   if FDict = nil then
@@ -258,6 +269,10 @@ begin
   // Symbolic (bit 3) and not Nonsymbolic (bit 6)
   FSymbolic := ((FFlags and 4) <> 0) and ((FFlags and 32) = 0);
   FMissingWidth := Descriptor.GetNumber('MissingWidth', 0) / 1000;
+  if Descriptor.GetNumber('Ascent', 0) > 0 then
+    FAscent := EnsureRange(Descriptor.GetNumber('Ascent', 750) / 1000, 0.3, 2);
+  if Descriptor.GetNumber('Descent', 0) < 0 then
+    FDescent := EnsureRange(Descriptor.GetNumber('Descent', -250) / 1000, -1, 0);
 end;
 
 procedure TPdfFont.LoadProgram(const Descriptor: IPdfDictionary);
@@ -654,7 +669,6 @@ var
   Parent: TPdfCMap;
   SubType: string;
   MapObj: IPdfObject;
-  TU: IPdfStream;
 begin
   // Encoding CMap
   EncObj := FDict.Get('Encoding');
@@ -695,9 +709,7 @@ begin
   if FProgram = nil then
   begin
     LoadSubstitute;
-    TU := FDict.GetStream('ToUnicode');
-    if TU <> nil then
-      FToUnicode := TPdfCMap.Parse(TU.GetDecodedData, nil);
+    EnsureToUnicode;
   end
   else
   begin
@@ -854,6 +866,55 @@ begin
   LoadDescriptor(FDict.GetDictionary('FontDescriptor'));
   LoadSimpleWidths;
   LoadSimpleEncoding;
+end;
+
+procedure TPdfFont.EnsureToUnicode;
+var
+  TU: IPdfStream;
+begin
+  if FToUnicodeLoaded then
+    Exit;
+  FToUnicodeLoaded := True;
+  TU := FDict.GetStream('ToUnicode');
+  if TU <> nil then
+    try
+      FToUnicode := TPdfCMap.Parse(TU.GetDecodedData, nil);
+    except
+      FToUnicode := nil;
+    end;
+end;
+
+function TPdfFont.GlyphUnicode(const G: TPdfGlyphInfo): string;
+var
+  Name: string;
+  U: Integer;
+begin
+  Result := '';
+  EnsureToUnicode;
+  if (FToUnicode <> nil) and FToUnicode.HasUnicodeMappings then
+  begin
+    Result := FToUnicode.ToUnicode(G.Code, G.NumBytes);
+    if Result <> '' then
+      Exit;
+  end;
+  if FKind = fkType0 then
+    Exit('');
+  if (G.Code >= 0) and (G.Code <= 255) then
+  begin
+    Name := FNames[G.Code];
+    if (Name = '') and (G.Code >= 128) then
+      Name := PdfWinAnsiEncoding^[G.Code]; // symbolic fonts without names: the usual Windows meaning of the code
+    if Name <> '' then
+    begin
+      U := PdfGlyphNameToUnicode(Name);
+      if (U < 0) and (FIsSubstitute and (FStandardFont = sfZapfDingbats)) then
+        U := PdfDingbatsGlyphNameToUnicode(Name);
+      if (U > 0) and (U <= $10FFFF) then
+        Exit(Char.ConvertFromUtf32(U));
+    end;
+    if (G.Code >= 32) and (G.Code <> 127) then
+      Result := Char(G.Code);
+  end;
 end;
 
 function TPdfFont.Type3GlyphProc(Code: Integer): IPdfStream;

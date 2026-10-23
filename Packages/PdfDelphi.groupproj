@@ -1,0 +1,72 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{E4EC0D03-DB21-437F-99FB-CE5D34099F04}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="PdfCore.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="PdfRenderSkia.dproj">
+            <Dependencies>PdfCore.dproj</Dependencies>
+        </Projects>
+        <Projects Include="PdfViewerFMX.dproj">
+            <Dependencies>PdfRenderSkia.dproj</Dependencies>
+        </Projects>
+        <Projects Include="PdfViewerFMXDsgn.dproj">
+            <Dependencies>PdfViewerFMX.dproj</Dependencies>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="PdfCore">
+        <MSBuild Projects="PdfCore.dproj"/>
+    </Target>
+    <Target Name="PdfCore:Clean">
+        <MSBuild Projects="PdfCore.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="PdfCore:Make">
+        <MSBuild Projects="PdfCore.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="PdfRenderSkia" DependsOnTargets="PdfCore">
+        <MSBuild Projects="PdfRenderSkia.dproj"/>
+    </Target>
+    <Target Name="PdfRenderSkia:Clean" DependsOnTargets="PdfCore:Clean">
+        <MSBuild Projects="PdfRenderSkia.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="PdfRenderSkia:Make" DependsOnTargets="PdfCore:Make">
+        <MSBuild Projects="PdfRenderSkia.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="PdfViewerFMX" DependsOnTargets="PdfRenderSkia">
+        <MSBuild Projects="PdfViewerFMX.dproj"/>
+    </Target>
+    <Target Name="PdfViewerFMX:Clean" DependsOnTargets="PdfRenderSkia:Clean">
+        <MSBuild Projects="PdfViewerFMX.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="PdfViewerFMX:Make" DependsOnTargets="PdfRenderSkia:Make">
+        <MSBuild Projects="PdfViewerFMX.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="PdfViewerFMXDsgn" DependsOnTargets="PdfViewerFMX">
+        <MSBuild Projects="PdfViewerFMXDsgn.dproj"/>
+    </Target>
+    <Target Name="PdfViewerFMXDsgn:Clean" DependsOnTargets="PdfViewerFMX:Clean">
+        <MSBuild Projects="PdfViewerFMXDsgn.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="PdfViewerFMXDsgn:Make" DependsOnTargets="PdfViewerFMX:Make">
+        <MSBuild Projects="PdfViewerFMXDsgn.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="PdfCore;PdfRenderSkia;PdfViewerFMX;PdfViewerFMXDsgn"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="PdfCore:Clean;PdfRenderSkia:Clean;PdfViewerFMX:Clean;PdfViewerFMXDsgn:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="PdfCore:Make;PdfRenderSkia:Make;PdfViewerFMX:Make;PdfViewerFMXDsgn:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

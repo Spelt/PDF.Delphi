@@ -14,7 +14,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.Math, System.Types, System.UITypes, System.Math.Vectors,
   System.Generics.Collections, System.Skia,
-  Pdf.Core.Types, Pdf.Core.Objects, Pdf.Core.Document,
+  Pdf.Core.Types, Pdf.Core.Objects, Pdf.Core.Document, Pdf.Core.Navigation,
   Pdf.Render.Functions, Pdf.Render.ColorSpaces, Pdf.Render.Content, Pdf.Render.State,
   Pdf.Render.Images, Pdf.Render.Shading, Pdf.Font.Glyphs, Pdf.Font.Loader;
 
@@ -23,6 +23,16 @@ type
     &Operator: string;
     Position: Integer;
     Message: string;
+  end;
+
+  /// <summary>Receives every glyph the renderer shows (text extraction). Quad holds the glyph box corners in canvas
+  /// coordinates in the order bottom-left, bottom-right, top-right, top-left (of the glyph's own baseline orientation).</summary>
+  TPdfTextSink = class abstract
+  public
+    procedure AddGlyph(const Text: string; const Quad: TArray<TPointF>; FontSize: Single; IsSpace: Boolean;
+      Font: TPdfFont); virtual; abstract;
+    /// <summary>Called after each string operand of Tj/TJ/'/".</summary>
+    procedure EndString; virtual;
   end;
 
   TPdfPageRenderer = class
@@ -58,6 +68,11 @@ type
     FShowTextPlaceholders: Boolean;
     FForcedColor: Boolean;      // uncoloured tiling pattern: colour operators are ignored
     FAborted: Boolean;
+    // fase 5
+    FNavigation: TPdfNavigation;
+    FRenderAnnotations: Boolean;
+    FTextOnly: Boolean;
+    FTextSink: TPdfTextSink;
     // text
     FFonts: TObjectDictionary<Pointer, TPdfFont>;
     FGlyphPaths: TObjectDictionary<TPdfFont, TDictionary<Integer, ISkPath>>;
@@ -65,6 +80,11 @@ type
     FTextClip: ISkPathBuilder;   // device-space clip accumulated by render modes 4-7
     FTextClipActive: Boolean;
     FType3Depth: Integer;
+    procedure DrawAnnotations(Page: TPdfPage);
+    function BuildSoftMask(const Dict: IPdfDictionary; out Origin: TPointF; out Luminosity: Boolean): ISkImage;
+    procedure BeginMask;
+    procedure EndMask;
+    procedure ReportGlyph(Font: TPdfFont; const G: TPdfGlyphInfo; const GlyphM: TPdfMatrix);
     function CurrentFont: TPdfFont;
     function GlyphPath(Font: TPdfFont; GID: Integer): ISkPath;
     procedure DrawType3Glyph(Font: TPdfFont; Code: Integer; const GlyphMatrix: TPdfMatrix; const Resources: IPdfDictionary);
@@ -129,6 +149,13 @@ type
     /// <summary>Safety limit on the number of content operations per page (default 5 million).</summary>
     property MaxOperations: Int64 read FMaxOperations write FMaxOperations;
     property Document: TPdfDocument read FDocument;
+    /// <summary>Draw the normal appearance streams of the page's annotations after the content (default True).</summary>
+    property RenderAnnotations: Boolean read FRenderAnnotations write FRenderAnnotations;
+    /// <summary>Skip images, shadings, patterns, path painting and annotations: only fonts are loaded and glyphs reported
+    /// to TextSink (clips and transformations still apply). Used for text extraction.</summary>
+    property TextOnly: Boolean read FTextOnly write FTextOnly;
+    /// <summary>Receives shown glyphs while rendering (not owned).</summary>
+    property TextSink: TPdfTextSink read FTextSink write FTextSink;
   end;
 
 implementation
@@ -189,10 +216,12 @@ begin
   FState := TPdfGraphicsState.Create;
   FFonts := TObjectDictionary<Pointer, TPdfFont>.Create([doOwnsValues]);
   FGlyphPaths := TObjectDictionary<TPdfFont, TDictionary<Integer, ISkPath>>.Create([doOwnsValues]);
+  FRenderAnnotations := True;
 end;
 
 destructor TPdfPageRenderer.Destroy;
 begin
+  FNavigation.Free;
   FGlyphPaths.Free;
   FFonts.Free;
   FDefaultFont.Free;
@@ -299,6 +328,7 @@ begin
     FFonts.Clear;
     FImageCache.Clear;
     FNamedColorSpaces.Clear;
+    FreeAndNil(FNavigation);
   end;
   FDocument := Page.Document;
   FResolver := FDocument.Resolver;
@@ -307,6 +337,12 @@ begin
   SaveCount := Canvas.Save;
   try
     Execute(Page.GetContentData, Page.Resources);
+    if FRenderAnnotations and not FTextOnly and not FAborted then
+    begin
+      Canvas.RestoreToCount(SaveCount);
+      SaveCount := Canvas.Save;
+      DrawAnnotations(Page);
+    end;
   finally
     Canvas.RestoreToCount(SaveCount);
     FCanvas := nil;
@@ -524,8 +560,13 @@ begin
   if GS.Contains('SMask') then
   begin
     Obj := GS.Get('SMask');
+    FState.SoftMaskImage := nil;
     if (Obj <> nil) and (Obj.Kind = okDictionary) then
-      FState.SoftMask := Obj
+    begin
+      FState.SoftMask := Obj;
+      if not FTextOnly and (FCanvas <> nil) and (FFormDepth < MaxFormDepth - 2) then
+        FState.SoftMaskImage := BuildSoftMask(Obj as IPdfDictionary, FState.SoftMaskOrigin, FState.SoftMaskLuminosity);
+    end
     else
       FState.SoftMask := nil; // /None
   end;
@@ -715,16 +756,20 @@ procedure TPdfPageRenderer.FillWithPaint(const Path: ISkPath; Stroke: Boolean);
 var
   Paint: ISkPaint;
 begin
+  if FTextOnly then
+    Exit;
   if Stroke then
     Paint := MakeStrokePaint
   else
     Paint := MakeFillPaint;
+  BeginMask;
   FCanvas.Save;
   try
     FCanvas.Concat(PdfMatrixToSk(FState.CTM));
     FCanvas.DrawPath(Path, Paint);
   finally
     FCanvas.Restore;
+    EndMask;
   end;
 end;
 
@@ -780,7 +825,9 @@ begin
   Paint.AlphaF := Alpha;
   if Shader = nil then
   begin
-    if not Shading.IsSupported and (Shading.ShadingType >= 4) then
+    if Shading.IsMesh then
+      // drawn with DrawMesh below
+    else if not Shading.IsSupported and (Shading.ShadingType >= 4) then
       Paint.Color := PdfApplyAlpha(Shading.AverageColor, Alpha)
     else
       Exit;
@@ -796,7 +843,15 @@ begin
       BBoxPath := B.Detach.Transform(PdfMatrixToSk(Matrix));
       FCanvas.ClipPath(BBoxPath, TSkClipOp.Intersect, FAntiAlias);
     end;
-    FCanvas.DrawPaint(Paint);
+    BeginMask;
+    try
+      if Shading.IsMesh then
+        Shading.DrawMesh(FCanvas, PdfMatrixToSk(Matrix), Alpha, TSkBlender.MakeMode(CurrentBlendMode))
+      else
+        FCanvas.DrawPaint(Paint);
+    finally
+      EndMask;
+    end;
   finally
     FCanvas.Restore;
   end;
@@ -883,7 +938,12 @@ begin
     Paint.AlphaF := FState.StrokeAlpha
   else
     Paint.AlphaF := FState.FillAlpha;
-  FCanvas.DrawPaint(Paint);
+  BeginMask;
+  try
+    FCanvas.DrawPaint(Paint);
+  finally
+    EndMask;
+  end;
 end;
 
 procedure TPdfPageRenderer.PaintWithPattern(const Path: ISkPath; const Pattern: IPdfObject; Stroke: Boolean; const Resources: IPdfDictionary);
@@ -978,7 +1038,10 @@ begin
     Exit;
   Subtype := Stream.Dict.GetName('Subtype');
   if Subtype = 'Image' then
-    DrawImage(Stream, Resources, Format('obj%d', [Stream.ObjNum]))
+  begin
+    if not FTextOnly then
+      DrawImage(Stream, Resources, Format('obj%d', [Stream.ObjNum]));
+  end
   else if Subtype = 'Form' then
     DrawForm(Stream, Resources)
   else if Subtype = 'PS' then
@@ -1069,6 +1132,8 @@ var
   Sampling: TSkSamplingOptions;
   Scale: Double;
 begin
+  if FTextOnly then
+    Exit;
   IsStencil := TPdfImageDecoder.IsStencilMask(Image.Dict);
   Key := '';
   if (CacheKey <> '') and (Image.ObjNum >= 0) then
@@ -1107,6 +1172,7 @@ begin
     Sampling := TSkSamplingOptions.Create(TSkFilterMode.Nearest, TSkMipmapMode.None)
   else
     Sampling := TSkSamplingOptions.Create(TSkFilterMode.Linear, TSkMipmapMode.None);
+  BeginMask;
   FCanvas.Save;
   try
     FCanvas.Concat(PdfMatrixToSk(FState.CTM));
@@ -1115,6 +1181,7 @@ begin
     FCanvas.DrawImageRect(Img, TRectF.Create(0, 0, W, H), Sampling, Paint);
   finally
     FCanvas.Restore;
+    EndMask;
   end;
 end;
 
@@ -1289,6 +1356,8 @@ var
       GlyphM := TPdfMatrix.Create(Fs * Th, 0, 0, Fs, 0, FState.Rise).Multiply(FTextMatrix);
       if Font.Vertical then
         GlyphM := TPdfMatrix.Translation(-G.VX, -G.VY).Multiply(GlyphM);
+      if FTextSink <> nil then
+        ReportGlyph(Font, G, GlyphM);
       if (Mode <> 3) and not FShowTextPlaceholders then
       begin
         if Font.IsType3 then
@@ -1302,8 +1371,9 @@ var
           if Path <> nil then
           begin
             UserPath := Path.Transform(PdfMatrixToSk(GlyphM));
-            if DoFill or DoStroke then
+            if (DoFill or DoStroke) and not FTextOnly then
             begin
+              BeginMask;
               FCanvas.Save;
               try
                 FCanvas.Concat(PdfMatrixToSk(FState.CTM));
@@ -1321,6 +1391,7 @@ var
                 end;
               finally
                 FCanvas.Restore;
+                EndMask;
               end;
             end;
             if DoClip then
@@ -1359,6 +1430,8 @@ var
       DrawPlaceholder(S, Total);
       FTextMatrix := TPdfMatrix.Translation(Total, 0).Multiply(FTextMatrix);
     end;
+    if FTextSink <> nil then
+      FTextSink.EndString;
   end;
 
 begin
@@ -1396,6 +1469,242 @@ begin
       end;
     end;
   end;
+end;
+
+{ Fase 5: soft masks, annotations, text extraction }
+
+procedure TPdfTextSink.EndString;
+begin
+end;
+
+procedure TPdfPageRenderer.BeginMask;
+begin
+  if FState.SoftMaskImage <> nil then
+    FCanvas.SaveLayer;
+end;
+
+procedure TPdfPageRenderer.EndMask;
+var
+  Paint: ISkPaint;
+begin
+  if FState.SoftMaskImage = nil then
+    Exit;
+  Paint := TSkPaint.Create(TSkPaintStyle.Fill);
+  Paint.Shader := FState.SoftMaskImage.MakeShader(
+    TMatrix.CreateTranslation(FState.SoftMaskOrigin.X, FState.SoftMaskOrigin.Y), TSkTileMode.Decal, TSkTileMode.Decal);
+  if FState.SoftMaskLuminosity then
+    Paint.ColorFilter := TSkColorFilter.MakeLumaColor;
+  Paint.Blender := TSkBlender.MakeMode(TSkBlendMode.DestIn);
+  FCanvas.DrawPaint(Paint);
+  FCanvas.Restore;
+end;
+
+function TPdfPageRenderer.BuildSoftMask(const Dict: IPdfDictionary; out Origin: TPointF; out Luminosity: Boolean): ISkImage;
+var
+  G: IPdfStream;
+  Bounds: TRectF;
+  W, H: Integer;
+  Surface: ISkSurface;
+  Sub: TPdfPageRenderer;
+  BC: IPdfArray;
+  Group: IPdfDictionary;
+  CS: TPdfColorSpace;
+  Backdrop: TAlphaColor;
+  V: TArray<Double>;
+begin
+  Result := nil;
+  Origin := TPointF.Zero;
+  Luminosity := Dict.GetName('S') = 'Luminosity';
+  G := Dict.GetStream('G');
+  if G = nil then
+    Exit;
+  Bounds := FCanvas.GetLocalClipBounds;
+  if Bounds.IsEmpty then
+    Exit;
+  Origin := TPointF.Create(Floor(Bounds.Left), Floor(Bounds.Top));
+  W := Ceil(Bounds.Right) - Floor(Bounds.Left);
+  H := Ceil(Bounds.Bottom) - Floor(Bounds.Top);
+  if (W <= 0) or (H <= 0) or (Int64(W) * H > 40000000) then
+    Exit;
+  Surface := TSkSurface.MakeRaster(W, H);
+  if Surface = nil then
+    Exit;
+  Backdrop := 0;
+  if Luminosity then
+  begin
+    Backdrop := TAlphaColorRec.Black;
+    BC := Dict.GetArray('BC');
+    if (BC <> nil) and BC.GetNumbers(V) and (Length(V) > 0) then
+    begin
+      CS := nil;
+      Group := G.Dict.GetDictionary('Group');
+      if Group <> nil then
+        CS := TPdfColorSpace.Parse(Group.GetRaw('CS'), nil, FResolver);
+      try
+        if CS <> nil then
+          Backdrop := CS.ToAlphaColor(V)
+        else if Length(V) >= 3 then
+          Backdrop := TPdfRGB.Create(V[0], V[1], V[2]).ToAlphaColor
+        else
+          Backdrop := TPdfRGB.Create(V[0], V[0], V[0]).ToAlphaColor;
+      finally
+        CS.Free;
+      end;
+    end;
+  end;
+  Surface.Canvas.Clear(Backdrop);
+  Surface.Canvas.Translate(-Origin.X, -Origin.Y);
+  Sub := TPdfPageRenderer.Create(FDocument);
+  try
+    Sub.FAntiAlias := FAntiAlias;
+    Sub.FMaxOperations := Max(1000, (FMaxOperations - FOperationCount) div 2);
+    Sub.FCanvas := Surface.Canvas;
+    Sub.ResetForPage(FState.CTM);
+    Sub.FBaseCTM := FBaseCTM;
+    Sub.FFormDepth := FFormDepth + 1;
+    try
+      Sub.DrawForm(G, nil);
+    except
+      on E: Exception do
+        Exit; // an unusable mask is ignored rather than hiding the content
+    end;
+    Inc(FOperationCount, Sub.FOperationCount);
+  finally
+    Sub.Free;
+  end;
+  Result := Surface.MakeImageSnapshot;
+end;
+
+procedure TPdfPageRenderer.DrawAnnotations(Page: TPdfPage);
+var
+  List: TObjectList<TPdfAnnotation>;
+  A: TPdfAnnotation;
+  BBox, TB: TPdfRectangle;
+  Arr: IPdfArray;
+  V: TArray<Double>;
+  M, AM: TPdfMatrix;
+  Sx, Sy: Double;
+  Op: TPdfOperation;
+
+  procedure Corner(PX, PY: Double; First: Boolean);
+  begin
+    M.Apply(PX, PY);
+    if First then
+      TB := TPdfRectangle.Create(PX, PY, PX, PY)
+    else
+    begin
+      TB.X0 := Min(TB.X0, PX);
+      TB.Y0 := Min(TB.Y0, PY);
+      TB.X1 := Max(TB.X1, PX);
+      TB.Y1 := Max(TB.Y1, PY);
+    end;
+  end;
+
+begin
+  if FNavigation = nil then
+    FNavigation := TPdfNavigation.Create(FDocument);
+  List := FNavigation.LoadAnnotations(Page);
+  try
+    for A in List do
+    begin
+      if FAborted then
+        Break;
+      if not A.IsVisible or (A.Appearance = nil) or A.Rect.IsEmpty then
+        Continue;
+      if not A.Appearance.Dict.GetRectangle('BBox', BBox) then
+        Continue;
+      // ISO 32000-1 8.4.4 Algorithm 8.1: map the transformed BBox onto /Rect
+      M := TPdfMatrix.Identity;
+      Arr := A.Appearance.Dict.GetArray('Matrix');
+      if (Arr <> nil) and Arr.GetNumbers(V, 6) then
+        M := TPdfMatrix.Create(V[0], V[1], V[2], V[3], V[4], V[5]);
+      Corner(BBox.X0, BBox.Y0, True);
+      Corner(BBox.X1, BBox.Y0, False);
+      Corner(BBox.X1, BBox.Y1, False);
+      Corner(BBox.X0, BBox.Y1, False);
+      if TB.Width > 1E-9 then
+        Sx := A.Rect.Width / TB.Width
+      else
+        Sx := 1;
+      if TB.Height > 1E-9 then
+        Sy := A.Rect.Height / TB.Height
+      else
+        Sy := 1;
+      AM := TPdfMatrix.Create(Sx, 0, 0, Sy, A.Rect.X0 - TB.X0 * Sx, A.Rect.Y0 - TB.Y0 * Sy);
+      // Fresh graphics state per annotation
+      while FStack.Count > 0 do
+        PopState;
+      FState.Free;
+      FState := TPdfGraphicsState.Create;
+      FState.FillColorSpace := FDeviceGray;
+      FState.StrokeColorSpace := FDeviceGray;
+      FState.CTM := AM.Multiply(FBaseCTM);
+      FPath.Clear;
+      FHasCurrentPoint := False;
+      FPendingClip := 0;
+      try
+        DrawForm(A.Appearance, Page.Resources);
+      except
+        on E: Exception do
+        begin
+          Op := Default(TPdfOperation);
+          Op.&Operator := 'Annot/' + A.Subtype;
+          AddError(Op, E.ClassName + ': ' + E.Message);
+        end;
+      end;
+    end;
+  finally
+    List.Free;
+  end;
+end;
+
+procedure TPdfPageRenderer.ReportGlyph(Font: TPdfFont; const G: TPdfGlyphInfo; const GlyphM: TPdfMatrix);
+var
+  DevM: TPdfMatrix;
+  Quad: TArray<TPointF>;
+  Fs, Th, GW, Asc, Desc, X, Y, Det: Double;
+  K: Integer;
+const
+  CX: array[0..3] of Integer = (0, 1, 1, 0);
+  CY: array[0..3] of Integer = (0, 0, 1, 1);
+begin
+  Fs := FState.FontSize;
+  Th := Max(FState.HorizontalScale, 1E-6);
+  if Font.Vertical then
+  begin
+    GW := G.Width;
+    if GW <= 0 then
+      GW := 1;
+  end
+  else
+  begin
+    GW := G.Width;
+    if Abs(Fs) > 1E-9 then
+      GW := GW + FState.CharSpacing / Abs(Fs);
+    if G.IsSpace and (Abs(Fs) > 1E-9) then
+      GW := GW + FState.WordSpacing / Abs(Fs);
+  end;
+  Asc := Font.Ascent;
+  Desc := Font.Descent;
+  if Font.IsType3 then
+  begin
+    Asc := 0.75;
+    Desc := -0.25;
+  end;
+  DevM := GlyphM.Multiply(FState.CTM);
+  SetLength(Quad, 4);
+  for K := 0 to 3 do
+  begin
+    X := CX[K] * GW;
+    if CY[K] = 0 then
+      Y := Desc
+    else
+      Y := Asc;
+    DevM.Apply(X, Y);
+    Quad[K] := TPointF.Create(X, Y);
+  end;
+  Det := Abs(DevM.A * DevM.D - DevM.B * DevM.C) / Th;
+  FTextSink.AddGlyph(Font.GlyphUnicode(G), Quad, Sqrt(Max(0, Det)), G.IsSpace, Font);
 end;
 
 { Operator dispatch }
@@ -1588,7 +1897,8 @@ begin
         end;
         if Name = 'sh' then
         begin
-          DoShading(Op.Name(0), Resources);
+          if not FTextOnly then
+            DoShading(Op.Name(0), Resources);
           Exit;
         end;
       end;
@@ -1731,7 +2041,7 @@ begin
         if Name = 'EI' then
         begin
           Stream := PdfAsStream(Op.Obj(0));
-          if Stream <> nil then
+          if (Stream <> nil) and not FTextOnly then
             DrawImage(Stream, Resources, '');
           Exit;
         end;

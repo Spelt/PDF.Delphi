@@ -32,7 +32,15 @@ uses
   Pdf.Font.StandardFonts in '..\Source\Font\Pdf.Font.StandardFonts.pas',
   Pdf.Font.CMap in '..\Source\Font\Pdf.Font.CMap.pas',
   Pdf.Font.Loader in '..\Source\Font\Pdf.Font.Loader.pas',
+  Pdf.Core.Navigation in '..\Source\Core\Pdf.Core.Navigation.pas',
+  Pdf.Codec.CCITT in '..\Source\Render\Pdf.Codec.CCITT.pas',
+  Pdf.Codec.JBIG2 in '..\Source\Render\Pdf.Codec.JBIG2.pas',
+  Pdf.Codec.JPX in '..\Source\Render\Pdf.Codec.JPX.pas',
+  Pdf.Codec.JPX.Primitives in '..\Source\Render\Pdf.Codec.JPX.Primitives.pas',
+  Pdf.Codec.JBIG2.Arith in '..\Source\Render\Pdf.Codec.JBIG2.Arith.pas',
+  Pdf.Codec.JBIG2.Huffman in '..\Source\Render\Pdf.Codec.JBIG2.Huffman.pas',
   Pdf.Render.Skia in '..\Source\Render\Pdf.Render.Skia.pas',
+  Pdf.Render.Text in '..\Source\Render\Pdf.Render.Text.pas',
   Pdf.Viewer.Layout in '..\Source\Viewer\Pdf.Viewer.Layout.pas',
   Pdf.Viewer.Cache in '..\Source\Viewer\Pdf.Viewer.Cache.pas',
   Pdf.Viewer.RenderQueue in '..\Source\Viewer\Pdf.Viewer.RenderQueue.pas',
@@ -54,7 +62,12 @@ uses
   Pdf.Tests.Font.Tables in 'Pdf.Tests.Font.Tables.pas',
   Pdf.Tests.Font.CMap in 'Pdf.Tests.Font.CMap.pas',
   Pdf.Tests.Text in 'Pdf.Tests.Text.pas',
-  Pdf.Tests.Viewer in 'Pdf.Tests.Viewer.pas';
+  Pdf.Tests.Viewer in 'Pdf.Tests.Viewer.pas',
+  Pdf.Tests.Phase5 in 'Pdf.Tests.Phase5.pas',
+  Pdf.Tests.Codec.CCITT in 'Pdf.Tests.Codec.CCITT.pas',
+  Pdf.Tests.Codec.JBIG2 in 'Pdf.Tests.Codec.JBIG2.pas',
+  Pdf.Tests.Codec.JPX in 'Pdf.Tests.Codec.JPX.pas',
+  Pdf.Tests.Mesh in 'Pdf.Tests.Mesh.pas';
 
 var
   Runner: ITestRunner;

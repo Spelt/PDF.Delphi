@@ -50,6 +50,13 @@ contains
   Pdf.Font.StandardFonts in '..\Source\Font\Pdf.Font.StandardFonts.pas',
   Pdf.Font.CMap in '..\Source\Font\Pdf.Font.CMap.pas',
   Pdf.Font.Loader in '..\Source\Font\Pdf.Font.Loader.pas',
-  Pdf.Render.Skia in '..\Source\Render\Pdf.Render.Skia.pas';
+  Pdf.Codec.CCITT in '..\Source\Render\Pdf.Codec.CCITT.pas',
+  Pdf.Codec.JBIG2.Arith in '..\Source\Render\Pdf.Codec.JBIG2.Arith.pas',
+  Pdf.Codec.JBIG2.Huffman in '..\Source\Render\Pdf.Codec.JBIG2.Huffman.pas',
+  Pdf.Codec.JBIG2 in '..\Source\Render\Pdf.Codec.JBIG2.pas',
+  Pdf.Codec.JPX.Primitives in '..\Source\Render\Pdf.Codec.JPX.Primitives.pas',
+  Pdf.Codec.JPX in '..\Source\Render\Pdf.Codec.JPX.pas',
+  Pdf.Render.Skia in '..\Source\Render\Pdf.Render.Skia.pas',
+  Pdf.Render.Text in '..\Source\Render\Pdf.Render.Text.pas';
 
 end.

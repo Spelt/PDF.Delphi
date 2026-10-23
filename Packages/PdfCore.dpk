@@ -41,6 +41,7 @@ contains
   Pdf.Core.Crypto in '..\Source\Core\Pdf.Core.Crypto.pas',
   Pdf.Core.Encryption in '..\Source\Core\Pdf.Core.Encryption.pas',
   Pdf.Core.XRef in '..\Source\Core\Pdf.Core.XRef.pas',
-  Pdf.Core.Document in '..\Source\Core\Pdf.Core.Document.pas';
+  Pdf.Core.Document in '..\Source\Core\Pdf.Core.Document.pas',
+  Pdf.Core.Navigation in '..\Source\Core\Pdf.Core.Navigation.pas';
 
 end.

@@ -8,8 +8,8 @@ unit Pdf.Render.State;
 interface
 
 uses
-  System.SysUtils, System.UITypes, System.Math, Pdf.Core.Types, Pdf.Core.Objects,
-  Pdf.Render.ColorSpaces;
+  System.SysUtils, System.Types, System.UITypes, System.Math, System.Skia,
+  Pdf.Core.Types, Pdf.Core.Objects, Pdf.Render.ColorSpaces;
 
 type
   TPdfGraphicsState = class
@@ -36,6 +36,9 @@ type
     StrokeAlpha: Double;
     BlendMode: string;                 // 'Normal', 'Multiply', ...
     SoftMask: IPdfObject;              // /SMask from ExtGState (dictionary) or nil
+    SoftMaskImage: ISkImage;           // rendered mask in device space (nil = none)
+    SoftMaskOrigin: TPointF;           // device position of SoftMaskImage's top-left
+    SoftMaskLuminosity: Boolean;       // True: luminosity of the image is the mask, else its alpha
     // Text state
     CharSpacing: Double;
     WordSpacing: Double;
@@ -111,6 +114,9 @@ begin
   StrokeAlpha := Source.StrokeAlpha;
   BlendMode := Source.BlendMode;
   SoftMask := Source.SoftMask;
+  SoftMaskImage := Source.SoftMaskImage;
+  SoftMaskOrigin := Source.SoftMaskOrigin;
+  SoftMaskLuminosity := Source.SoftMaskLuminosity;
   CharSpacing := Source.CharSpacing;
   WordSpacing := Source.WordSpacing;
   HorizontalScale := Source.HorizontalScale;

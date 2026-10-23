@@ -15,12 +15,16 @@ Het projectplan (fasen, teststrategie, risico's) staat in het Claude-document
 | 2 | Graphics (`Pdf.Render.Skia`) | **Klaar**: content-stream-interpreter met inline images, graphics state (`q`/`Q`, CTM, lijnparameters, dash, ExtGState alpha en blend modes), paden met nonzero/even-odd vullen, stroken en clippen, kleurruimtes (Device*, Cal*, Lab, ICCBased, Indexed, Separation, DeviceN, Pattern), functies type 0/2/3/4, images (1–16 bpc, Decode, ImageMask, SMask, Mask, DCT via Skia), form XObjects met transparency groups, shadings type 1–3, shading- en tiling-patronen. Tekst wordt gevolgd maar nog niet getekend (optionele plaatshouderkaders) |
 | 3 | Tekst en fonts (`Pdf.Font.*`) | **Klaar**: eigen parsers voor TrueType (glyf, cmap, post), CFF/Type2 (incl. CID-keyed) en Type1 (eexec, flex, seac); glyphs worden als paden getekend, dus geen platform-fontmanager en identieke uitvoer op elk platform. Fontloader met encodings (Standard, WinAnsi, MacRoman, Symbol, ZapfDingbats, Differences), Adobe Glyph List, widths, Type0 met embedded en voorgedefinieerde CMaps (169 Adobe-CMaps als resource), CIDToGIDMap, verticale metrics, Type3-fonts, standaard-14-substitutie (Liberation Sans en Foxit-fonts uit pdf.js). Render modes 0–7 inclusief tekst-clipping |
 | 4 | Viewer-component (`TPdfViewer`) | **Klaar**: FMX-control op `TSkCustomControl` met verticale scroll van alle pagina's, alleen zichtbare pagina's renderen, achtergrondrendering in een eigen thread met prioriteitswachtrij, LRU-cache met geheugenlimiet, eerst de geschaalde oude weergave en daarna scherp, Zoom/FitWidth/FitPage, pinch-to-zoom en dubbeltik, muiswiel (Ctrl = zoom), slepen, scrollbalken, toetsenbord, `GoToPage`, `OnPageChange`, `OnLoadError`, `RenderPageToImage`. Packages `PdfViewerFMX` (runtime) en `PdfViewerFMXDsgn` (designtime), demo-app in `Demo/` |
-| 5 | Extra's | nog niet begonnen |
+| 5 | Extra's | **Klaar**: klikbare links (URI, GoTo, GoToR, Named), annotaties via hun appearance streams (met `/AS`-states), bladwijzers (`/Outlines`) en named destinations (`/Dests` en de name tree), soft masks uit ExtGState (alpha en luminosity), tekstextractie met zoeken en selectie (`Pdf.Render.Text`), decoders voor CCITT Fax, JBIG2 en JPEG 2000 (`Pdf.Codec.*`, pure Delphi) en mesh-shadings type 4–7 |
 
 Beeldcodecs (DCT, JPX, JBIG2, CCITT) laat `Pdf.Core` bewust ongedecodeerd door
 naar de renderer (`IPdfStream.ImageFilter`); de renderer decodeert DCT via
-Skia, JPX/JBIG2/CCITT en mesh-shadings (type 4–7) en soft masks uit ExtGState
-staan op de lijst voor fase 5.
+Skia en de andere drie met de eigen decoders in `Pdf.Codec.*`.
+
+Nog open (bewust): ICC-kleurprofielen (ICCBased valt terug op het aantal
+componenten), knockout-groepen, transfer functions (`/TR`), JPX met
+arithmetic-coder bypass, en een CJK-substituutfont voor niet-ingebedde
+CID-fonts zonder ToUnicode.
 
 ## Omgeving
 
@@ -32,7 +36,7 @@ staan op de lijst voor fase 5.
 
 ```
 Source/Core/        Pdf.Core.* units (geen Skia, geen FMX)
-Source/Render/      Pdf.Render.* units (System.Skia, geen FMX)
+Source/Render/      Pdf.Render.* units (System.Skia, geen FMX) en Pdf.Codec.* (CCITT, JBIG2, JPX)
 Source/Font/        Pdf.Font.* units: fontprogramma's, encodings, CMaps, loader (geen Skia)
 Source/Viewer/      Pdf.Viewer.* (layout, cache, renderthread; geen FMX) en FMX.PdfViewer
 Resources/          substituutfonts en CMaps als RCDATA (*.rc, zie Resources/README.md)
@@ -151,6 +155,22 @@ Rendering gebeurt op `Zoom x schermschaal` in een eigen thread; de UI-thread
 tekent alleen kant-en-klare `ISkImage`s. `CacheLimitMB` begrenst het geheugen
 (standaard 256 MB, op mobiel 96 MB). `RenderPageToImage(Index, Scale)` geeft
 een pagina als afbeelding voor thumbnails of export.
+
+Verder in de viewer:
+
+- Links: klikken volgt GoTo-bestemmingen en Named-acties zelf; URI's gaan
+  naar `OnOpenURI` (het control start zelf geen browser). `OnLinkClick` kan
+  elke actie onderscheppen.
+- Bladwijzers: `Outline` (boom van `TPdfOutlineItem`), `GoToOutlineItem`,
+  `GoToDestination`; alle navigatiedata zit in `Navigation` (`TPdfNavigation`
+  uit `Pdf.Core.Navigation`).
+- Tekst: slepen over tekst selecteert (dubbelklik een woord, Ctrl+A de
+  pagina), Ctrl+C kopieert, `SelectedText`; `Find(tekst)` markeert alle
+  treffers in het document, `FindNext`/`FindPrevious` (F3 / Shift+F3)
+  springen ernaartoe, Esc wist. `TextPage(Index)` geeft de geëxtraheerde
+  tekst met glyph-posities (`TPdfTextPage` uit `Pdf.Render.Text`).
+  Tekstextractie pauzeert de renderthread kort, omdat het objectmodel niet
+  thread-safe is.
 
 ## Ontwerpkeuzes
 

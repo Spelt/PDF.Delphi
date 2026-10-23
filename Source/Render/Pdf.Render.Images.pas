@@ -48,7 +48,15 @@ function PdfMakeSkImageRGBA(Width, Height: Integer; const RGBA: TBytes): ISkImag
 implementation
 
 uses
-  System.Math, System.StrUtils, System.Generics.Collections;
+  System.Math, System.StrUtils, System.Generics.Collections, Pdf.Codec.CCITT, Pdf.Codec.JPX, Pdf.Codec.JBIG2;
+
+type
+  /// Result of the image codecs run by ReadStreamData: BPC > 0 forces the sample depth, Width/Height > 0 override
+  /// the dictionary size (reduced JPX), Alpha is an 8-bit alpha plane of Width x Height (nil when none).
+  TCodecResult = record
+    BPC, Width, Height: Integer;
+    Alpha: TBytes;
+  end;
 
 {$POINTERMATH ON}
 
@@ -222,14 +230,164 @@ begin
     Result := Default;
 end;
 
-function ReadStreamData(const Stream: IPdfStream; out Data: TBytes; out Filter, Reason: string): Boolean;
+/// Repacks 1-bit rows from stride SrcStride to DstStride (Rows rows), padding missing rows/bits with WhiteByte.
+function RepackBilevel(const Src: TBytes; SrcStride, DstStride, Rows, TotalRows: Integer; WhiteByte: Byte): TBytes;
+var
+  Y, N: Integer;
+begin
+  SetLength(Result, Int64(DstStride) * TotalRows);
+  if Length(Result) > 0 then
+    FillChar(Result[0], Length(Result), WhiteByte);
+  N := Min(SrcStride, DstStride);
+  for Y := 0 to Min(Rows, TotalRows) - 1 do
+    if (Y + 1) * SrcStride <= Length(Src) then
+      Move(Src[Y * SrcStride], Result[Y * DstStride], N);
+end;
+
+/// Runs the image codecs (CCITT, JPX) so that Data holds plain samples afterwards (Filter := '', Codec.BPC set).
+/// Other filters are left alone (Codec.BPC = 0). False with Reason when the codec fails.
+function ApplyImageCodec(const Stream: IPdfStream; var Data: TBytes; var Filter: string; out Codec: TCodecResult;
+  out Reason: string): Boolean;
+var
+  Parms: IPdfDictionary;
+  P: TPdfCCITTParams;
+  W, H, Rows, Columns, SrcStride, DstStride, I, NC, N: Integer;
+  Decoded: TBytes;
+  WhiteByte: Byte;
+  Opt: TPdfJPXOptions;
+  Jpx: TPdfJPXImage;
+  Arr: IPdfArray;
+  Src, Dst, Alpha: PByte;
+begin
+  Result := True;
+  Codec := Default(TCodecResult);
+  if Filter = 'JPXDecode' then
+  begin
+    Opt := TPdfJPXOptions.Default;
+    Opt.SMaskInData := Stream.Dict.GetInteger('SMaskInData', 0) > 0;
+    Arr := PdfAsArray(Stream.Dict.Get('ColorSpace', 'CS'));
+    Opt.IsIndexed := (Arr <> nil) and ((Arr.GetName(0) = 'Indexed') or (Arr.GetName(0) = 'I'));
+    try
+      Jpx := PdfJPXDecode(Data, Opt);
+    except
+      on E: Exception do
+      begin
+        Reason := 'JPX: ' + E.Message;
+        Exit(False);
+      end;
+    end;
+    if (Jpx.Width <= 0) or (Jpx.Height <= 0) or (Jpx.Components <= 0) or (Length(Jpx.Data) = 0) then
+    begin
+      Reason := 'JPX: no image data';
+      Exit(False);
+    end;
+    N := Jpx.Width * Jpx.Height;
+    NC := Jpx.Components;
+    if Jpx.HasAlpha and (Length(Jpx.Data) >= N * (NC + 1)) then
+    begin
+      // Split the interleaved alpha channel off into a mask plane
+      SetLength(Data, N * NC);
+      SetLength(Codec.Alpha, N);
+      Src := @Jpx.Data[0];
+      Dst := @Data[0];
+      Alpha := @Codec.Alpha[0];
+      for I := 0 to N - 1 do
+      begin
+        Move(Src^, Dst^, NC);
+        Inc(Src, NC);
+        Inc(Dst, NC);
+        Alpha^ := Src^;
+        Inc(Src);
+        Inc(Alpha);
+      end;
+    end
+    else
+      Data := Jpx.Data;
+    Codec.Width := Jpx.Width;
+    Codec.Height := Jpx.Height;
+    Codec.BPC := 8;
+    Filter := '';
+    Exit;
+  end;
+  if Filter = 'JBIG2Decode' then
+  begin
+    if not TPdfImageDecoder.GetSize(Stream.Dict, W, H) then
+      Exit;
+    Decoded := nil;
+    Parms := Stream.ImageFilterParms;
+    if (Parms <> nil) and (Parms.GetStream('JBIG2Globals') <> nil) then
+      try
+        Decoded := Parms.GetStream('JBIG2Globals').GetDecodedData;
+      except
+        Decoded := nil;
+      end;
+    try
+      Data := PdfJBIG2Decode(Data, Decoded, W, H);
+    except
+      on E: Exception do
+      begin
+        Reason := 'JBIG2: ' + E.Message;
+        Exit(False);
+      end;
+    end;
+    Filter := '';
+    Codec.BPC := 1;
+    Exit;
+  end;
+  if Filter = 'CCITTFaxDecode' then
+  begin
+    if not TPdfImageDecoder.GetSize(Stream.Dict, W, H) then
+      Exit;
+    Parms := Stream.ImageFilterParms;
+    P := TPdfCCITTParams.Default;
+    P.Columns := W;
+    P.Rows := H;
+    if Parms <> nil then
+    begin
+      P.K := Integer(Parms.GetInteger('K', 0));
+      P.Columns := Integer(Parms.GetInteger('Columns', 1728));
+      P.Rows := Integer(Parms.GetInteger('Rows', H));
+      P.BlackIs1 := Parms.GetBoolean('BlackIs1', False);
+      P.ByteAlign := Parms.GetBoolean('EncodedByteAlign', False);
+      P.EndOfLine := Parms.GetBoolean('EndOfLine', False);
+      P.EndOfBlock := Parms.GetBoolean('EndOfBlock', True);
+    end;
+    if P.Columns <= 0 then
+      P.Columns := 1728;
+    if P.Rows <= 0 then
+      P.Rows := H;
+    try
+      Decoded := PdfCCITTDecode(Data, P, Rows);
+    except
+      on E: Exception do
+      begin
+        Reason := 'CCITT: ' + E.Message;
+        Exit(False);
+      end;
+    end;
+    Columns := P.Columns;
+    SrcStride := (Columns + 7) div 8;
+    DstStride := (W + 7) div 8;
+    if P.BlackIs1 then
+      WhiteByte := 0
+    else
+      WhiteByte := $FF;
+    Data := RepackBilevel(Decoded, SrcStride, DstStride, Rows, H, WhiteByte);
+    Filter := '';
+    Codec.BPC := 1;
+  end;
+end;
+
+function ReadStreamData(const Stream: IPdfStream; out Data: TBytes; out Filter, Reason: string;
+  out Codec: TCodecResult): Boolean;
 begin
   Data := nil;
   Filter := '';
+  Codec := Default(TCodecResult);
   try
     Data := Stream.GetDecodedData;
     Filter := Stream.ImageFilter;
-    Result := True;
+    Result := ApplyImageCodec(Stream, Data, Filter, Codec, Reason);
   except
     on E: Exception do
     begin
@@ -890,6 +1048,7 @@ var
   Table: TBytes;
   Raw: TCardinalArray;
   I, X, Y, N: Integer;
+  Codec: TCodecResult;
   MaxVal: Double;
   Dst: PByte;
 begin
@@ -898,8 +1057,13 @@ begin
   Dict := MaskStream.Dict;
   if not TPdfImageDecoder.GetSize(Dict, MW, MH) or (Int64(MW) * MH > PdfMaxImagePixels) then
     Exit;
-  if not ReadStreamData(MaskStream, Data, Filter, Reason) then
+  if not ReadStreamData(MaskStream, Data, Filter, Reason, Codec) then
     Exit;
+  if (Codec.Width > 0) and (Codec.Height > 0) then
+  begin
+    MW := Codec.Width;
+    MH := Codec.Height;
+  end;
   if Filter = 'DCTDecode' then
   begin
     Img := DecodeJpeg(Data);
@@ -918,7 +1082,9 @@ begin
     S.Width := MW;
     S.Height := MH;
     S.NComps := 1;
-    if IsSoft then
+    if Codec.BPC > 0 then
+      S.BPC := Codec.BPC
+    else if IsSoft then
       S.BPC := GetBitsPerComponent(Dict, 8)
     else
       S.BPC := 1;
@@ -1007,6 +1173,7 @@ function DecodeImage(const Stream: IPdfStream; const Resources: IPdfDictionary; 
 var
   Dict: IPdfDictionary;
   W, H, BPC, NComps, JComps, I, MW, MH: Integer;
+  Codec: TCodecResult;
   Data, RGBA, Plane: TBytes;
   Filter: string;
   CS: TPdfColorSpace;
@@ -1042,8 +1209,13 @@ begin
   end;
   IsStencil := TPdfImageDecoder.IsStencilMask(Dict);
   JpegAsRGB := False;
-  if not ReadStreamData(Stream, Data, Filter, Reason) then
+  if not ReadStreamData(Stream, Data, Filter, Reason, Codec) then
     Exit;
+  if (Codec.Width > 0) and (Codec.Height > 0) then
+  begin
+    W := Codec.Width;
+    H := Codec.Height;
+  end;
   if (Filter = 'JPXDecode') or (Filter = 'JBIG2Decode') or (Filter = 'CCITTFaxDecode') then
   begin
     Reason := Filter + ' not supported';
@@ -1097,7 +1269,7 @@ begin
       if (CS = nil) and not IsJpeg then
       begin
         // Unknown or missing colour space: guess the component count from the data size.
-        BPC := GetBitsPerComponent(Dict, 8);
+        if Codec.BPC > 0 then BPC := Codec.BPC else BPC := GetBitsPerComponent(Dict, 8);
         if (BPC >= 1) and (BPC <= 16) then
           I := Round(Length(Data) * 8.0 / (Int64(W) * H * BPC))
         else
@@ -1180,7 +1352,9 @@ begin
     end
     else
     begin
-      if IsStencil then
+      if Codec.BPC > 0 then
+        BPC := Codec.BPC
+      else if IsStencil then
         BPC := 1
       else
         BPC := GetBitsPerComponent(Dict, 8);
@@ -1245,6 +1419,8 @@ begin
       if LoadMaskPlane(MaskStream, False, Plane, MW, MH) then
         ApplyMaskPlane(PCardinal(RGBA), W, H, Plane, MW, MH);
     end;
+    if (Codec.Alpha <> nil) and (Length(Codec.Alpha) = W * H) then
+      ApplyMaskPlane(PCardinal(RGBA), W, H, Codec.Alpha, W, H); // JPX alpha channel (SMaskInData / cdef)
     Plane := nil;
 
     Result := MakeImageOwned(W, H, RGBA);
