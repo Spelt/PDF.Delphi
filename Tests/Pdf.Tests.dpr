@@ -17,6 +17,13 @@ uses
   Pdf.Core.Encryption in '..\Source\Core\Pdf.Core.Encryption.pas',
   Pdf.Core.XRef in '..\Source\Core\Pdf.Core.XRef.pas',
   Pdf.Core.Document in '..\Source\Core\Pdf.Core.Document.pas',
+  Pdf.Render.Functions in '..\Source\Render\Pdf.Render.Functions.pas',
+  Pdf.Render.ColorSpaces in '..\Source\Render\Pdf.Render.ColorSpaces.pas',
+  Pdf.Render.Content in '..\Source\Render\Pdf.Render.Content.pas',
+  Pdf.Render.State in '..\Source\Render\Pdf.Render.State.pas',
+  Pdf.Render.Images in '..\Source\Render\Pdf.Render.Images.pas',
+  Pdf.Render.Shading in '..\Source\Render\Pdf.Render.Shading.pas',
+  Pdf.Render.Skia in '..\Source\Render\Pdf.Render.Skia.pas',
   Pdf.Tests.Builder in 'Pdf.Tests.Builder.pas',
   Pdf.Tests.Lexer in 'Pdf.Tests.Lexer.pas',
   Pdf.Tests.Parser in 'Pdf.Tests.Parser.pas',
@@ -24,7 +31,11 @@ uses
   Pdf.Tests.Crypto in 'Pdf.Tests.Crypto.pas',
   Pdf.Tests.XRef in 'Pdf.Tests.XRef.pas',
   Pdf.Tests.Document in 'Pdf.Tests.Document.pas',
-  Pdf.Tests.Corpus in 'Pdf.Tests.Corpus.pas';
+  Pdf.Tests.Corpus in 'Pdf.Tests.Corpus.pas',
+  Pdf.Tests.Functions in 'Pdf.Tests.Functions.pas',
+  Pdf.Tests.ColorSpaces in 'Pdf.Tests.ColorSpaces.pas',
+  Pdf.Tests.Images in 'Pdf.Tests.Images.pas',
+  Pdf.Tests.Render in 'Pdf.Tests.Render.pas';
 
 var
   Runner: ITestRunner;

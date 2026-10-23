@@ -1,0 +1,46 @@
+package PdfRenderSkia;
+
+{$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Pdf.Render.Skia - renders Pdf.Core pages to an ISkCanvas (no FMX)'}
+{$RUNONLY}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  Skia.Package.RTL,
+  PdfCore;
+
+contains
+  Pdf.Render.Functions in '..\Source\Render\Pdf.Render.Functions.pas',
+  Pdf.Render.ColorSpaces in '..\Source\Render\Pdf.Render.ColorSpaces.pas',
+  Pdf.Render.Content in '..\Source\Render\Pdf.Render.Content.pas',
+  Pdf.Render.State in '..\Source\Render\Pdf.Render.State.pas',
+  Pdf.Render.Images in '..\Source\Render\Pdf.Render.Images.pas',
+  Pdf.Render.Shading in '..\Source\Render\Pdf.Render.Shading.pas',
+  Pdf.Render.Skia in '..\Source\Render\Pdf.Render.Skia.pas';
+
+end.

@@ -72,6 +72,10 @@
     <DCCReference Include="Pdf.Tests.XRef.pas"/>
     <DCCReference Include="Pdf.Tests.Document.pas"/>
     <DCCReference Include="Pdf.Tests.Corpus.pas"/>
+    <DCCReference Include="Pdf.Tests.Functions.pas"/>
+    <DCCReference Include="Pdf.Tests.ColorSpaces.pas"/>
+    <DCCReference Include="Pdf.Tests.Images.pas"/>
+    <DCCReference Include="Pdf.Tests.Render.pas"/>
     <BuildConfiguration Include="Base">
       <Key>Base</Key>
     </BuildConfiguration>
