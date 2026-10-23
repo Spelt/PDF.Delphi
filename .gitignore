@@ -1,0 +1,27 @@
+# Delphi build output
+Build/out/
+Build/Lib/
+Build/Bpl/
+Build/Tests/
+Build/scratch/
+__history/
+__recovery/
+*.dcu
+*.bpl
+*.dcp
+*.exe
+*.map
+*.drc
+*.rsm
+*.tds
+*.local
+*.identcache
+*.projdata
+*.tvsconfig
+*.dsk
+*.stat
+*.res
+!*.dres
+
+# Test corpus (point PDF_CORPUS_DIRS at a pdf.js checkout instead)
+Tests/Corpus/*.pdf

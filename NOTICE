@@ -1,0 +1,16 @@
+Pdf.Delphi - FMX PDF viewer for Delphi
+
+Portions of this software are derived from pdf.js
+(https://github.com/mozilla/pdf.js), Copyright Mozilla Foundation,
+licensed under the Apache License, Version 2.0:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Units that contain ported logic carry the note
+"Portions derived from pdf.js (Mozilla, Apache License 2.0)" in their header.
+Affected areas: tolerant lexing and parsing (Pdf.Core.Lexer, Pdf.Core.Parser),
+cross-reference reconstruction (Pdf.Core.XRef), stream filters
+(Pdf.Core.Filters) and the standard security handler (Pdf.Core.Crypto,
+Pdf.Core.Encryption).
+
+The test PDFs under Tests/Data were generated for this project.
