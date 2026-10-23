@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds the FMX demo (Demo/PdfViewerDemo.dpr) for Win64 into Build/out with dcc64.
+# Builds the FMX demo (DemoFMX/PdfViewerDemo.dpr) for Win64 into Build/out with dcc64.
 # The IDE generates PdfViewerDemo.res itself; here an empty one is created when missing.
 export MSYS_NO_PATHCONV=1
 export MSYS2_ARG_CONV_EXCL='*'
@@ -14,7 +14,7 @@ for rc in "$ROOTU"/Resources/*.rc; do
     (cd "$ROOTU/Resources" && "$BDS\\bin\\brcc32.exe" -fo"$(basename "$res")" "$(basename "$rc")" >/dev/null) || exit 1
   fi
 done
-cd "$ROOTU/Demo" || exit 1
+cd "$ROOTU/DemoFMX" || exit 1
 if [ ! -f Demo.Styles.res ] || [ Demo.Styles.rc -nt Demo.Styles.res ] || [ Styles/Dark.style -nt Demo.Styles.res ]; then
   "$BDS\\bin\\brcc32.exe" -foDemo.Styles.res Demo.Styles.rc >/dev/null || exit 1
 fi

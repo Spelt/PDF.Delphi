@@ -1,23 +1,23 @@
-# Pdf.Delphi — FMX PDF Viewer
+# PDF.Delphi
 
-A PDF renderer written in Delphi that renders identically on every FMX
-platform. Skia does the drawing; the parser, the graphics interpreter and the
-font engine are our own code, with no native third-party libraries. pdf.js
-(Apache 2.0) served as the reference for structure and edge cases.
+A PDF renderer written in Delphi that renders identically on every FMX and VCL platforms. Skia does the drawing; the parser, the graphics interpreter and thefont engine are our own code, with no native third-party libraries. Pdf.js (Apache 2.0) served as the reference for structure and edge cases.
 
 ## Requirements
 
-- Delphi 13.1 (Studio 37.0) with the bundled Skia (`System.Skia`, `FMX.Skia`,
+- Delphi 13.x with the bundled Skia (`System.Skia`, `FMX.Skia`,
   `Vcl.Skia`). `Pdf.Core` and `Pdf.Font` use only the RTL and compile for
   every platform; `Pdf.Render` and the framework-independent viewer logic
   (`Pdf.Viewer.*`) add `System.Skia`; only `FMX.Pdf*` depends on FMX and only
   `Vcl.Pdf*` on the VCL.
 - Tests: DUnitX as shipped with Delphi (`$(BDS)\source\DUnitX`).
 
-## Viewer component
+It wil probably also work for Delphi 11 and 12 but you need to use Unit aliasing because the names of the used Skia units are different.
 
-- FMX: Build `PdfViewerFMX`, then install
-- VCL: Build `PdfViewerFMX`, then install
+
+## Components installation
+In Packages open the projectgroup PdfDelphi. Then: 
+- For FMX: Build `PdfViewerFMX`, then install
+- For VCL: Build `PdfViewerVCL`, then install
 
 This wil get `TPdfViewer` and `TPdfThumbnails` on
 the "PDF" palette page, or create the viewer in code:
