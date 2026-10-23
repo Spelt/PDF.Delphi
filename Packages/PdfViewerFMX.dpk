@@ -41,6 +41,7 @@ contains
   Pdf.Viewer.Layout in '..\Source\Viewer\Pdf.Viewer.Layout.pas',
   Pdf.Viewer.Cache in '..\Source\Viewer\Pdf.Viewer.Cache.pas',
   Pdf.Viewer.RenderQueue in '..\Source\Viewer\Pdf.Viewer.RenderQueue.pas',
-  FMX.PdfViewer in '..\Source\Viewer\FMX.PdfViewer.pas';
+  FMX.PdfViewer in '..\Source\Viewer\FMX.PdfViewer.pas',
+  FMX.PdfThumbnails in '..\Source\Viewer\FMX.PdfThumbnails.pas';
 
 end.

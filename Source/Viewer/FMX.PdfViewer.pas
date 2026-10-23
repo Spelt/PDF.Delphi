@@ -32,6 +32,18 @@ type
     Match: TPdfTextMatch;
   end;
   TPdfRenderErrorNotify = procedure(Sender: TObject; PageIndex: Integer; const Message: string) of object;
+  /// <summary>How pages are arranged: single pages or facing pairs; continuous (all rows stacked) or one row at a time.</summary>
+  TPdfDisplayMode = (dmContinuous, dmSinglePage, dmFacingContinuous, dmFacing);
+  /// <summary>The document is encrypted and the password given so far was wrong (Attempt starts at 1).
+  /// Return a password to try again, or set Cancel to give up silently.</summary>
+  TPdfPasswordEvent = procedure(Sender: TObject; const FileName: string; Attempt: Integer; var Password: string;
+    var Cancel: Boolean) of object;
+  /// <summary>What changed, for companion controls registered with TPdfViewer.AddChangeListener.</summary>
+  TPdfViewerChange = (vcDocument, vcPage, vcZoom, vcScroll, vcRotation, vcDisplayMode, vcPageImage, vcSelection,
+    vcSearch);
+  TPdfViewerChangeEvent = procedure(Sender: TObject; Change: TPdfViewerChange) of object;
+  /// <summary>A background rendition finished (UI thread); Scale is the render scale it was requested at.</summary>
+  TPdfPageRenderedEvent = procedure(Sender: TObject; PageIndex: Integer; Scale: Double) of object;
 
   [ComponentPlatformsAttribute(pidAllPlatforms)]
   TPdfViewer = class(TSkCustomControl)
@@ -90,13 +102,35 @@ type
     FOnZoomChange: TNotifyEvent;
     FOnScroll: TNotifyEvent;
     FRenderErrors: Integer;
+    FRotation: Integer;
+    FDisplayMode: TPdfDisplayMode;
+    FFacingCoverPage: Boolean;
+    FUnrotatedSizes: TArray<TSizeF>;   // display size per page in points before Rotation
+    FListeners: TList<TPdfViewerChangeEvent>;
+    FOnPasswordRequest: TPdfPasswordEvent;
+    FOnPageRendered: TPdfPageRenderedEvent;
+    procedure DoLoad(const FileName: string; const Password: string; const LoadProc: TProc<string>);
+    procedure ApplyPageSizes;
+    /// <summary>Maps a point in the page's unrotated display space (points, y down; the space of TextPage and
+    /// PageMatrix(Page, 1)) to the display space shown, which includes Rotation.</summary>
+    function UnrotatedToView(PageIndex: Integer; const P: TPointF): TPointF;
+    function ViewToUnrotated(PageIndex: Integer; const P: TPointF): TPointF;
+    function UnrotatedRectToView(PageIndex: Integer; const R: TRectF): TRectF;
+    procedure SetRotation(const Value: Integer);
+    procedure SetDisplayMode(const Value: TPdfDisplayMode);
+    procedure SetFacingCoverPage(const Value: Boolean);
+    procedure ApplyDisplayMode;
+    procedure Notify(Change: TPdfViewerChange);
+    procedure SelectionChanged;
+    /// <summary>Scrolls vertically; in non-continuous modes scrolling past the end of the row shows the next row.</summary>
+    procedure ScrollOrFlip(DY: Double);
     function PageAnnotations(Index: Integer): TObjectList<TPdfAnnotation>;
     function LinkAt(const P: TPointF): TPdfAnnotation;
     function ControlToPagePoint(const P: TPointF; out PageIndex: Integer): TPointF;
     procedure WithDocumentLock(const Proc: TProc);
     procedure DrawOverlays(const ACanvas: ISkCanvas; PageIndex: Integer; const PageRectOnCanvas: TRectF);
     procedure UpdateCursor(const P: TPointF);
-    procedure ScrollToPageRect(PageIndex: Integer; const R: TRectF);
+    procedure ScrollToPageRect(PageIndex: Integer; const Unrotated: TRectF);
     procedure PageReady(Sender: TObject; Page: Integer; Scale: Double; const Image: ISkImage);
     procedure RenderError(Sender: TObject; Page: Integer; const Message: string);
     procedure QueueRedraw;
@@ -155,8 +189,27 @@ type
     /// <summary>Scrolls so that the given document position (logical pixels at the current zoom) is at the top-left.</summary>
     procedure ScrollTo(X, Y: Double);
     procedure ScrollBy(DX, DY: Double);
-    /// <summary>Renders a page synchronously (thumbnails, export). Pauses the background renderer meanwhile.</summary>
-    function RenderPageToImage(Index: Integer; Scale: Double; Background: TAlphaColor = TAlphaColorRec.White): ISkImage;
+    /// <summary>Rotates the view 90 degrees clockwise or counter-clockwise (all pages).</summary>
+    procedure RotateClockwise;
+    procedure RotateCounterClockwise;
+    /// <summary>Pages of the row that contains Index: one page, or two in facing modes.</summary>
+    function RowPages(Index: Integer): TArray<Integer>;
+    /// <summary>Size of a page in points as shown (after /Rotate and Rotation); zero for an invalid index.</summary>
+    function PageSize(Index: Integer): TSizeF;
+    /// <summary>Renders a page synchronously (export, printing). Pauses the background renderer meanwhile.
+    /// ARotation -1 uses the viewer's Rotation; 0, 90, 180 or 270 rotate explicitly.</summary>
+    function RenderPageToImage(Index: Integer; Scale: Double; Background: TAlphaColor = TAlphaColorRec.White;
+      ARotation: Integer = -1): ISkImage;
+    /// <summary>Queues a page for background rendering at Scale (device pixels per point) into the page cache, e.g.
+    /// for thumbnails. OnPageRendered and the vcPageImage change report completion; nothing happens without a document.</summary>
+    procedure RequestPageImage(Index: Integer; Scale: Double; Priority: Integer = 2000);
+    /// <summary>Cached rendition of a page at exactly Scale, False when none.</summary>
+    function TryGetPageImage(Index: Integer; Scale: Double; out Image: ISkImage): Boolean;
+    /// <summary>Nearest cached rendition of a page at any scale, False when none.</summary>
+    function TryGetNearestPageImage(Index: Integer; Scale: Double; out Image: ISkImage; out ImageScale: Double): Boolean;
+    /// <summary>Companion controls (thumbnails, outline panes) register here to follow the viewer.</summary>
+    procedure AddChangeListener(const Listener: TPdfViewerChangeEvent);
+    procedure RemoveChangeListener(const Listener: TPdfViewerChangeEvent);
     /// <summary>Page under a control point, -1 when none.</summary>
     function PageAtPoint(const P: TPointF): Integer;
     /// <summary>Navigation data of the document (outline, destinations). Valid while a document is loaded.</summary>
@@ -177,6 +230,10 @@ type
     function FindPrevious: Boolean;
     procedure ClearSearch;
     function SearchMatchCount: Integer;
+    /// <summary>Match by index (0 .. SearchMatchCount - 1).</summary>
+    function SearchMatch(Index: Integer): TPdfSearchMatch;
+    /// <summary>Makes match Index the active one and scrolls it into view.</summary>
+    procedure GoToMatch(Index: Integer);
     /// <summary>Index of the active match (0-based), -1 when none.</summary>
     property ActiveMatch: Integer read FActiveMatch;
     property SearchQuery: string read FSearchQuery;
@@ -208,13 +265,18 @@ type
     property CanFocus default True;
     property ClipChildren default True;
     property Cursor default crDefault;
+    property DragMode;
+    property EnableDragHighlight;
     property Enabled default True;
     property Height;
+    property Hint;
     property HitTest default True;
     property Margins;
     property Opacity;
     property Padding;
+    property PopupMenu;
     property Position;
+    property ShowHint;
     property Size;
     property TabOrder;
     property TabStop default True;
@@ -223,6 +285,11 @@ type
     property Width;
     property OnClick;
     property OnDblClick;
+    property OnDragEnter;
+    property OnDragLeave;
+    property OnDragOver;
+    property OnDragDrop;
+    property OnDragEnd;
     property OnEnter;
     property OnExit;
     property OnGesture;
@@ -239,6 +306,11 @@ type
     /// <summary>1.0 = 72 dpi (one point per logical pixel).</summary>
     property Zoom: Double read FZoom write SetZoom stored IsZoomStored;
     property ZoomMode: TPdfZoomMode read FZoomMode write SetZoomMode default zmFitWidth;
+    /// <summary>Clockwise rotation of the view in degrees (0, 90, 180, 270), on top of each page's own /Rotate.</summary>
+    property Rotation: Integer read FRotation write SetRotation default 0;
+    property DisplayMode: TPdfDisplayMode read FDisplayMode write SetDisplayMode default dmContinuous;
+    /// <summary>In facing modes the first page stands alone, so that pages 2-3, 4-5 ... face each other.</summary>
+    property FacingCoverPage: Boolean read FFacingCoverPage write SetFacingCoverPage default False;
     property MinZoom: Double read FMinZoom write SetMinZoom;
     property MaxZoom: Double read FMaxZoom write SetMaxZoom;
     /// <summary>Space between pages in logical pixels.</summary>
@@ -252,7 +324,10 @@ type
     property PrefetchPages: Integer read FPrefetchPages write FPrefetchPages default 1;
     property OnPageChange: TPdfPageChangeEvent read FOnPageChange write FOnPageChange;
     property OnLoadError: TPdfLoadErrorEvent read FOnLoadError write FOnLoadError;
+    /// <summary>Asked for a password when the document is encrypted; without a handler the load fails with EPdfPasswordError.</summary>
+    property OnPasswordRequest: TPdfPasswordEvent read FOnPasswordRequest write FOnPasswordRequest;
     property OnRenderError: TPdfRenderErrorNotify read FOnRenderError write FOnRenderError;
+    property OnPageRendered: TPdfPageRenderedEvent read FOnPageRendered write FOnPageRendered;
     property OnZoomChange: TNotifyEvent read FOnZoomChange write FOnZoomChange;
     property OnScroll: TNotifyEvent read FOnScroll write FOnScroll;
     /// <summary>Dragging over text selects it (True); otherwise dragging always pans.</summary>
@@ -298,6 +373,8 @@ begin
   FAnnots := TObjectDictionary<Integer, TObjectList<TPdfAnnotation>>.Create([doOwnsValues]);
   FTextPages := TObjectDictionary<Integer, TPdfTextPage>.Create([doOwnsValues]);
   FSearchMatches := TList<TPdfSearchMatch>.Create;
+  FListeners := TList<TPdfViewerChangeEvent>.Create;
+  FDisplayMode := dmContinuous;
   FActiveMatch := -1;
   FSelPage := -1;
   FSelStart := -1;
@@ -338,6 +415,10 @@ end;
 destructor TPdfViewer.Destroy;
 begin
   StopQueue;
+  // Redraw/notification closures queued by the worker still reference Self: run them now (they see csDestroying)
+  if TThread.CurrentThread.ThreadID = MainThreadID then
+    CheckSynchronize;
+  FreeAndNil(FListeners);
   FSearchMatches.Free;
   FTextPages.Free;
   FAnnots.Free;
@@ -355,6 +436,7 @@ begin
   if FQueue <> nil then
     Exit;
   FQueue := TPdfRenderQueue.Create(FDocument, FCache);
+  FQueue.Rotation := FRotation;
   FQueue.OnPageReady := PageReady;
   FQueue.OnError := RenderError;
   FQueue.Start;
@@ -390,69 +472,106 @@ begin
   FCurrentPage := -1;
   FFileName := '';
   FRenderErrors := 0;
+  FUnrotatedSizes := nil;
   UpdateScrollBars;
+  Notify(vcDocument);
   Redraw;
 end;
 
-procedure TPdfViewer.LoadFromFile(const FileName: string; const Password: string);
+procedure TPdfViewer.DoLoad(const FileName: string; const Password: string; const LoadProc: TProc<string>);
 var
-  Handled: Boolean;
+  Handled, Cancel: Boolean;
+  Pwd: string;
+  Attempt: Integer;
 begin
   Close;
-  try
-    FDocument.LoadFromFile(FileName, Password);
-    FFileName := FileName;
-    AfterLoad;
-  except
-    on E: Exception do
-    begin
-      FDocument.Close;
-      Handled := False;
-      if Assigned(FOnLoadError) then
-        FOnLoadError(Self, FileName, E, Handled);
-      if not Handled then
-        raise;
+  Pwd := Password;
+  Attempt := 0;
+  repeat
+    try
+      LoadProc(Pwd);
+      FFileName := FileName;
+      AfterLoad;
+      Exit;
+    except
+      on E: Exception do
+      begin
+        FDocument.Close;
+        if (E is EPdfPasswordError) and Assigned(FOnPasswordRequest) then
+        begin
+          Inc(Attempt);
+          Cancel := False;
+          Pwd := '';
+          FOnPasswordRequest(Self, FileName, Attempt, Pwd, Cancel);
+          if Cancel then
+            Exit;
+          Continue;
+        end;
+        Handled := False;
+        if Assigned(FOnLoadError) then
+          FOnLoadError(Self, FileName, E, Handled);
+        if not Handled then
+          raise;
+        Exit;
+      end;
     end;
-  end;
+  until False;
+end;
+
+procedure TPdfViewer.LoadFromFile(const FileName: string; const Password: string);
+begin
+  DoLoad(FileName, Password,
+    procedure(Pwd: string)
+    begin
+      FDocument.LoadFromFile(FileName, Pwd);
+    end);
 end;
 
 procedure TPdfViewer.LoadFromStream(Stream: TStream; const Password: string);
 var
-  Handled: Boolean;
+  Start: Int64;
 begin
-  Close;
-  try
-    FDocument.LoadFromStream(Stream, Password);
-    FFileName := '';
-    AfterLoad;
-  except
-    on E: Exception do
+  Start := Stream.Position;
+  DoLoad('', Password,
+    procedure(Pwd: string)
     begin
-      FDocument.Close;
-      Handled := False;
-      if Assigned(FOnLoadError) then
-        FOnLoadError(Self, '', E, Handled);
-      if not Handled then
-        raise;
-    end;
-  end;
+      Stream.Position := Start;
+      FDocument.LoadFromStream(Stream, Pwd);
+    end);
 end;
 
-procedure TPdfViewer.AfterLoad;
+procedure TPdfViewer.ApplyPageSizes;
 var
   Sizes: TArray<TSizeF>;
   I: Integer;
   P: TPdfPage;
 begin
-  // Page metrics are collected on the UI thread before the render thread starts:
-  // afterwards only the worker touches the document.
-  SetLength(Sizes, FDocument.PageCount);
-  for I := 0 to FDocument.PageCount - 1 do
+  // Page metrics are collected on the UI thread while the render thread is not running:
+  // otherwise only the worker touches the document. Cached, so a rotation needs no document access.
+  if Length(FUnrotatedSizes) <> FDocument.PageCount then
   begin
-    P := FDocument.Pages[I];
-    Sizes[I] := TSizeF.Create(Max(1, P.GetDisplayWidth), Max(1, P.GetDisplayHeight));
+    SetLength(FUnrotatedSizes, FDocument.PageCount);
+    for I := 0 to High(FUnrotatedSizes) do
+    begin
+      P := FDocument.Pages[I];
+      FUnrotatedSizes[I] := TSizeF.Create(Max(1, P.GetDisplayWidth), Max(1, P.GetDisplayHeight));
+    end;
   end;
+  SetLength(Sizes, Length(FUnrotatedSizes));
+  for I := 0 to High(Sizes) do
+    if (FRotation = 90) or (FRotation = 270) then
+      Sizes[I] := TSizeF.Create(FUnrotatedSizes[I].Height, FUnrotatedSizes[I].Width)
+    else
+      Sizes[I] := FUnrotatedSizes[I];
   FLayout.SetPages(Sizes);
+end;
+
+procedure TPdfViewer.AfterLoad;
+var
+  I: Integer;
+begin
+  ApplyPageSizes;
+  FLayout.ActivePage := 0;
   // Navigation data and annotations are read now, before the render thread owns the document
   FNavigation := TPdfNavigation.Create(FDocument);
   try
@@ -469,6 +588,7 @@ begin
   FCurrentPage := -1;
   StartQueue;
   UpdateScrollBars;
+  Notify(vcDocument);
   UpdateCurrentPage;
   Redraw;
 end;
@@ -488,6 +608,16 @@ end;
 procedure TPdfViewer.PageReady(Sender: TObject; Page: Integer; Scale: Double; const Image: ISkImage);
 begin
   QueueRedraw;
+  if Assigned(FOnPageRendered) or (FListeners.Count > 0) then
+    TThread.Queue(nil,
+      procedure
+      begin
+        if csDestroying in ComponentState then
+          Exit;
+        if Assigned(FOnPageRendered) then
+          FOnPageRendered(Self, Page, Scale);
+        Notify(vcPageImage);
+      end);
 end;
 
 procedure TPdfViewer.RenderError(Sender: TObject; Page: Integer; const Message: string);
@@ -567,6 +697,7 @@ begin
       FQueue.CancelPending;
     if Assigned(FOnZoomChange) then
       FOnZoomChange(Self);
+    Notify(vcZoom);
   end;
 end;
 
@@ -650,6 +781,7 @@ begin
   UpdateCurrentPage;
   if Assigned(FOnScroll) then
     FOnScroll(Self);
+  Notify(vcScroll);
   Redraw;
 end;
 
@@ -669,6 +801,37 @@ procedure TPdfViewer.DoPageChange;
 begin
   if Assigned(FOnPageChange) then
     FOnPageChange(Self, FCurrentPage);
+  Notify(vcPage);
+end;
+
+procedure TPdfViewer.Notify(Change: TPdfViewerChange);
+var
+  I: Integer;
+begin
+  if FListeners = nil then
+    Exit;
+  for I := FListeners.Count - 1 downto 0 do
+    if I < FListeners.Count then
+      FListeners[I](Self, Change);
+end;
+
+procedure TPdfViewer.AddChangeListener(const Listener: TPdfViewerChangeEvent);
+begin
+  if Assigned(Listener) and not FListeners.Contains(Listener) then
+    FListeners.Add(Listener);
+end;
+
+procedure TPdfViewer.RemoveChangeListener(const Listener: TPdfViewerChangeEvent);
+begin
+  if FListeners <> nil then
+    FListeners.Remove(Listener);
+end;
+
+procedure TPdfViewer.SelectionChanged;
+begin
+  if Assigned(FOnSelectionChange) then
+    FOnSelectionChange(Self);
+  Notify(vcSelection);
 end;
 
 procedure TPdfViewer.RequestVisiblePages;
@@ -910,12 +1073,27 @@ end;
 { Navigation }
 
 procedure TPdfViewer.GoToPage(Index: Integer);
+var
+  Prev: Integer;
 begin
   if (Index < 0) or (Index >= FLayout.PageCount) then
     Exit;
+  Prev := FCurrentPage;
+  if not FLayout.IsPageLaidOut(Index) then
+  begin
+    // Non-continuous mode: switch to the row of the page; fit modes follow the new row
+    FLayout.ActivePage := Index;
+    FCurrentPage := Index;
+    UpdateLayoutViewport;
+    ApplyZoomMode;
+    UpdateScrollBars;
+    FScrollX := FLayout.ClampScrollX((FLayout.TotalWidth - FLayout.ViewportWidth) / 2);
+    FScrollY := -1; // force SetScroll to apply and redraw
+  end;
   SetScroll(FScrollX, FLayout.ScrollTopOfPage(Index));
-  // A short last page cannot be scrolled to the top: still report it as current
-  if FCurrentPage <> Index then
+  // A short last page cannot be scrolled to the top: still report it as current. Prev catches a row
+  // switch in non-continuous mode, where FCurrentPage was set before scrolling.
+  if (FCurrentPage <> Index) or (Prev <> Index) then
   begin
     FCurrentPage := Index;
     DoPageChange;
@@ -924,12 +1102,197 @@ end;
 
 procedure TPdfViewer.NextPage;
 begin
-  GoToPage(FCurrentPage + 1);
+  GoToPage(FLayout.FirstPageOfRow(FLayout.RowOfPage(Max(0, FCurrentPage)) + 1));
 end;
 
 procedure TPdfViewer.PreviousPage;
 begin
-  GoToPage(FCurrentPage - 1);
+  GoToPage(FLayout.FirstPageOfRow(FLayout.RowOfPage(Max(0, FCurrentPage)) - 1));
+end;
+
+procedure TPdfViewer.ScrollOrFlip(DY: Double);
+var
+  Row: Integer;
+begin
+  if not FLayout.Continuous and (FLayout.PageCount > 0) then
+  begin
+    Row := FLayout.RowOfPage(Max(0, FCurrentPage));
+    if (DY > 0) and (FScrollY >= FLayout.MaxScrollY - 0.5) and (Row + 1 < FLayout.RowCount) then
+    begin
+      GoToPage(FLayout.FirstPageOfRow(Row + 1));
+      Exit;
+    end;
+    if (DY < 0) and (FScrollY <= 0.5) and (Row > 0) then
+    begin
+      GoToPage(FLayout.FirstPageOfRow(Row - 1));
+      SetScroll(FScrollX, FLayout.MaxScrollY);
+      Exit;
+    end;
+  end;
+  ScrollBy(0, DY);
+end;
+
+function TPdfViewer.RowPages(Index: Integer): TArray<Integer>;
+begin
+  Result := FLayout.RowPages(FLayout.RowOfPage(Index));
+end;
+
+function TPdfViewer.PageSize(Index: Integer): TSizeF;
+begin
+  if (Index >= 0) and (Index < FLayout.PageCount) then
+    Result := FLayout.PageSizes[Index]
+  else
+    Result := TSizeF.Create(0, 0);
+end;
+
+{ Rotation and display mode }
+
+function TPdfViewer.UnrotatedToView(PageIndex: Integer; const P: TPointF): TPointF;
+var
+  W0, H0: Single;
+begin
+  if (FRotation = 0) or (PageIndex < 0) or (PageIndex >= Length(FUnrotatedSizes)) then
+    Exit(P);
+  W0 := FUnrotatedSizes[PageIndex].Width;
+  H0 := FUnrotatedSizes[PageIndex].Height;
+  case FRotation of
+    90:  Result := TPointF.Create(H0 - P.Y, P.X);
+    180: Result := TPointF.Create(W0 - P.X, H0 - P.Y);
+  else
+    Result := TPointF.Create(P.Y, W0 - P.X); // 270
+  end;
+end;
+
+function TPdfViewer.ViewToUnrotated(PageIndex: Integer; const P: TPointF): TPointF;
+var
+  W0, H0: Single;
+begin
+  if (FRotation = 0) or (PageIndex < 0) or (PageIndex >= Length(FUnrotatedSizes)) then
+    Exit(P);
+  W0 := FUnrotatedSizes[PageIndex].Width;
+  H0 := FUnrotatedSizes[PageIndex].Height;
+  case FRotation of
+    90:  Result := TPointF.Create(P.Y, H0 - P.X);
+    180: Result := TPointF.Create(W0 - P.X, H0 - P.Y);
+  else
+    Result := TPointF.Create(W0 - P.Y, P.X); // 270
+  end;
+end;
+
+function TPdfViewer.UnrotatedRectToView(PageIndex: Integer; const R: TRectF): TRectF;
+var
+  A, B: TPointF;
+begin
+  if FRotation = 0 then
+    Exit(R);
+  A := UnrotatedToView(PageIndex, R.TopLeft);
+  B := UnrotatedToView(PageIndex, R.BottomRight);
+  Result := TRectF.Create(Min(A.X, B.X), Min(A.Y, B.Y), Max(A.X, B.X), Max(A.Y, B.Y));
+end;
+
+procedure TPdfViewer.SetRotation(const Value: Integer);
+var
+  V, Page: Integer;
+begin
+  V := Value mod 360;
+  if V < 0 then
+    Inc(V, 360);
+  V := (V div 90) * 90;
+  if V = FRotation then
+    Exit;
+  FRotation := V;
+  if not FDocument.IsLoaded then
+  begin
+    Notify(vcRotation);
+    Exit;
+  end;
+  Page := Max(0, FCurrentPage);
+  StopQueue;
+  FCache.Clear;
+  ApplyPageSizes;
+  UpdateLayoutViewport;
+  ApplyZoomMode;
+  StartQueue;
+  UpdateScrollBars;
+  FScrollX := FLayout.ClampScrollX((FLayout.TotalWidth - FLayout.ViewportWidth) / 2);
+  FScrollY := FLayout.ScrollTopOfPage(Page);
+  UpdateScrollBars;
+  UpdateCurrentPage;
+  Notify(vcRotation);
+  Redraw;
+end;
+
+procedure TPdfViewer.RotateClockwise;
+begin
+  Rotation := FRotation + 90;
+end;
+
+procedure TPdfViewer.RotateCounterClockwise;
+begin
+  Rotation := FRotation - 90;
+end;
+
+procedure TPdfViewer.SetDisplayMode(const Value: TPdfDisplayMode);
+begin
+  if Value = FDisplayMode then
+    Exit;
+  FDisplayMode := Value;
+  ApplyDisplayMode;
+end;
+
+procedure TPdfViewer.SetFacingCoverPage(const Value: Boolean);
+begin
+  if Value = FFacingCoverPage then
+    Exit;
+  FFacingCoverPage := Value;
+  ApplyDisplayMode;
+end;
+
+procedure TPdfViewer.ApplyDisplayMode;
+var
+  Page: Integer;
+begin
+  Page := Max(0, FCurrentPage);
+  if FDisplayMode in [dmFacingContinuous, dmFacing] then
+    FLayout.Columns := 2
+  else
+    FLayout.Columns := 1;
+  FLayout.CoverPage := FFacingCoverPage;
+  FLayout.Continuous := FDisplayMode in [dmContinuous, dmFacingContinuous];
+  FLayout.ActivePage := Page;
+  Notify(vcDisplayMode);
+  if FLayout.PageCount = 0 then
+  begin
+    Redraw;
+    Exit;
+  end;
+  UpdateLayoutViewport;
+  ApplyZoomMode;
+  UpdateScrollBars;
+  FScrollX := FLayout.ClampScrollX((FLayout.TotalWidth - FLayout.ViewportWidth) / 2);
+  FScrollY := FLayout.ScrollTopOfPage(Page);
+  UpdateScrollBars;
+  UpdateCurrentPage;
+  Redraw;
+end;
+
+{ Page images for companion controls }
+
+procedure TPdfViewer.RequestPageImage(Index: Integer; Scale: Double; Priority: Integer);
+begin
+  if (FQueue <> nil) and (Index >= 0) and (Index < FLayout.PageCount) and (Scale > 0) then
+    FQueue.Request(Index, Scale, Priority);
+end;
+
+function TPdfViewer.TryGetPageImage(Index: Integer; Scale: Double; out Image: ISkImage): Boolean;
+begin
+  Result := FCache.Get(Index, Scale, Image);
+end;
+
+function TPdfViewer.TryGetNearestPageImage(Index: Integer; Scale: Double; out Image: ISkImage;
+  out ImageScale: Double): Boolean;
+begin
+  Result := FCache.GetNearest(Index, Scale, Image, ImageScale);
 end;
 
 procedure TPdfViewer.ScrollTo(X, Y: Double);
@@ -948,12 +1311,27 @@ begin
 end;
 
 function TPdfViewer.PointToPage(const P: TPointF; out PageIndex: Integer; out PX, PY: Double): Boolean;
+var
+  PP: TPointF;
+  M: TPdfMatrix;
 begin
-  PageIndex := PageAtPoint(P);
-  Result := (PageIndex >= 0) and FLayout.DocumentToPage(PageIndex, P.X + FScrollX, P.Y + FScrollY, PX, PY);
+  PX := 0;
+  PY := 0;
+  PP := ControlToPagePoint(P, PageIndex);
+  Result := PageIndex >= 0;
+  if not Result then
+    Exit;
+  // PP is in the page's display space (points, y down); back to user space through the page matrix
+  M := TPdfPageRenderer.PageMatrix(FDocument.Pages[PageIndex], 1);
+  if not M.Invert(M) then
+    Exit(False);
+  PX := PP.X;
+  PY := PP.Y;
+  M.Apply(PX, PY);
 end;
 
-function TPdfViewer.RenderPageToImage(Index: Integer; Scale: Double; Background: TAlphaColor): ISkImage;
+function TPdfViewer.RenderPageToImage(Index: Integer; Scale: Double; Background: TAlphaColor;
+  ARotation: Integer): ISkImage;
 var
   R: TPdfPageRenderer;
   WasRunning: Boolean;
@@ -961,12 +1339,14 @@ begin
   Result := nil;
   if (Index < 0) or (Index >= FDocument.PageCount) then
     Exit;
+  if ARotation < 0 then
+    ARotation := FRotation;
   WasRunning := FQueue <> nil;
   StopQueue;
   try
     R := TPdfPageRenderer.Create(FDocument);
     try
-      Result := R.RenderToImage(FDocument.Pages[Index], Scale, Background);
+      Result := R.RenderToImage(FDocument.Pages[Index], Scale, Background, ARotation);
     finally
       R.Free;
     end;
@@ -1025,8 +1405,7 @@ begin
                 Inc(FSelEnd);
               FSelecting := False;
             end;
-            if Assigned(FOnSelectionChange) then
-              FOnSelectionChange(Self);
+            SelectionChanged;
             Redraw;
             Exit;
           end;
@@ -1072,8 +1451,7 @@ begin
         if (G >= 0) and (G <> FSelEnd) then
         begin
           FSelEnd := G;
-          if Assigned(FOnSelectionChange) then
-            FOnSelectionChange(Self);
+          SelectionChanged;
           Redraw;
         end;
       end;
@@ -1151,7 +1529,8 @@ begin
   if PageIndex < 0 then
     Exit;
   R := FLayout.PageRect[PageIndex];
-  Result := TPointF.Create((P.X + FScrollX - R.Left) / FZoom, (P.Y + FScrollY - R.Top) / FZoom);
+  Result := ViewToUnrotated(PageIndex,
+    TPointF.Create((P.X + FScrollX - R.Left) / FZoom, (P.Y + FScrollY - R.Top) / FZoom));
 end;
 
 procedure TPdfViewer.WithDocumentLock(const Proc: TProc);
@@ -1194,8 +1573,11 @@ var
   TP: TPdfTextPage;
   Rects: TArray<TRectF>;
 
-  function Map(const PR: TRectF): TRectF;
+  function Map(const Unrotated: TRectF): TRectF;
+  var
+    PR: TRectF;
   begin
+    PR := UnrotatedRectToView(PageIndex, Unrotated);
     Result := TRectF.Create(PageRectOnCanvas.Left + PR.Left * FZoom, PageRectOnCanvas.Top + PR.Top * FZoom,
       PageRectOnCanvas.Left + PR.Right * FZoom, PageRectOnCanvas.Top + PR.Bottom * FZoom);
   end;
@@ -1258,11 +1640,14 @@ begin
   Result := FNavigation.Outline;
 end;
 
-procedure TPdfViewer.ScrollToPageRect(PageIndex: Integer; const R: TRectF);
+procedure TPdfViewer.ScrollToPageRect(PageIndex: Integer; const Unrotated: TRectF);
 var
-  PR: TRectF;
+  PR, R: TRectF;
   Y, X: Double;
 begin
+  if not FLayout.IsPageLaidOut(PageIndex) then
+    GoToPage(PageIndex);
+  R := UnrotatedRectToView(PageIndex, Unrotated);
   PR := FLayout.PageRect[PageIndex];
   Y := PR.Top + R.Top * FZoom - FLayout.ViewportHeight / 3;
   X := FScrollX;
@@ -1277,6 +1662,7 @@ var
   M: TPdfMatrix;
   X, Y: Double;
   PR: TRectF;
+  Pt: TPointF;
 begin
   Result := Dest.IsValid and (Dest.PageIndex < FLayout.PageCount);
   if not Result then
@@ -1296,6 +1682,8 @@ begin
           FitWidth
         else if (Dest.Kind = dkXYZ) and Dest.HasZoom then
           Zoom := Dest.Zoom;
+        if not FLayout.IsPageLaidOut(Dest.PageIndex) then
+          GoToPage(Dest.PageIndex);
         M := TPdfPageRenderer.PageMatrix(Page, 1);
         PR := FLayout.PageRect[Dest.PageIndex];
         if Dest.HasLeft then
@@ -1307,7 +1695,8 @@ begin
         else
           Y := Page.CropBox.Y1;
         M.Apply(X, Y);
-        SetScroll(PR.Left + X * FZoom - FPageMargin, PR.Top + Y * FZoom - FPageMargin);
+        Pt := UnrotatedToView(Dest.PageIndex, TPointF.Create(X, Y));
+        SetScroll(PR.Left + Pt.X * FZoom - FPageMargin, PR.Top + Pt.Y * FZoom - FPageMargin);
         if FCurrentPage <> Dest.PageIndex then
         begin
           FCurrentPage := Dest.PageIndex;
@@ -1396,39 +1785,41 @@ begin
   begin
     if First < 0 then
       First := 0;
-    FActiveMatch := First - 1;
-    FindNext;
+    GoToMatch(First);
   end
   else
+  begin
+    Notify(vcSearch);
     Redraw;
+  end;
+end;
+
+procedure TPdfViewer.GoToMatch(Index: Integer);
+var
+  SM: TPdfSearchMatch;
+begin
+  if (Index < 0) or (Index >= FSearchMatches.Count) then
+    Exit;
+  FActiveMatch := Index;
+  SM := FSearchMatches[FActiveMatch];
+  if Length(SM.Match.Rects) > 0 then
+    ScrollToPageRect(SM.PageIndex, SM.Match.Rects[0]);
+  Notify(vcSearch);
+  Redraw;
 end;
 
 function TPdfViewer.FindNext: Boolean;
-var
-  SM: TPdfSearchMatch;
 begin
   Result := FSearchMatches.Count > 0;
-  if not Result then
-    Exit;
-  FActiveMatch := (FActiveMatch + 1) mod FSearchMatches.Count;
-  SM := FSearchMatches[FActiveMatch];
-  if Length(SM.Match.Rects) > 0 then
-    ScrollToPageRect(SM.PageIndex, SM.Match.Rects[0]);
-  Redraw;
+  if Result then
+    GoToMatch((FActiveMatch + 1) mod FSearchMatches.Count);
 end;
 
 function TPdfViewer.FindPrevious: Boolean;
-var
-  SM: TPdfSearchMatch;
 begin
   Result := FSearchMatches.Count > 0;
-  if not Result then
-    Exit;
-  FActiveMatch := (FActiveMatch - 1 + FSearchMatches.Count) mod FSearchMatches.Count;
-  SM := FSearchMatches[FActiveMatch];
-  if Length(SM.Match.Rects) > 0 then
-    ScrollToPageRect(SM.PageIndex, SM.Match.Rects[0]);
-  Redraw;
+  if Result then
+    GoToMatch((FActiveMatch - 1 + FSearchMatches.Count) mod FSearchMatches.Count);
 end;
 
 procedure TPdfViewer.ClearSearch;
@@ -1436,12 +1827,24 @@ begin
   FSearchMatches.Clear;
   FSearchQuery := '';
   FActiveMatch := -1;
+  Notify(vcSearch);
   Redraw;
 end;
 
 function TPdfViewer.SearchMatchCount: Integer;
 begin
   Result := FSearchMatches.Count;
+end;
+
+function TPdfViewer.SearchMatch(Index: Integer): TPdfSearchMatch;
+begin
+  if (Index >= 0) and (Index < FSearchMatches.Count) then
+    Result := FSearchMatches[Index]
+  else
+  begin
+    Result := Default(TPdfSearchMatch);
+    Result.PageIndex := -1;
+  end;
 end;
 
 function TPdfViewer.HasSelection: Boolean;
@@ -1465,8 +1868,7 @@ begin
   FSelPage := -1;
   FSelStart := -1;
   FSelEnd := -1;
-  if Assigned(FOnSelectionChange) then
-    FOnSelectionChange(Self);
+  SelectionChanged;
   Redraw;
 end;
 
@@ -1480,8 +1882,7 @@ begin
   FSelPage := PageIndex;
   FSelStart := 0;
   FSelEnd := TP.GlyphCount - 1;
-  if Assigned(FOnSelectionChange) then
-    FOnSelectionChange(Self);
+  SelectionChanged;
   Redraw;
 end;
 
@@ -1514,7 +1915,7 @@ begin
   else if ssShift in Shift then
     ScrollBy(-Steps * WheelLines * LineHeight, 0)
   else
-    ScrollBy(0, -Steps * WheelLines * LineHeight);
+    ScrollOrFlip(-Steps * WheelLines * LineHeight);
   Handled := True;
 end;
 
@@ -1529,8 +1930,8 @@ begin
     vkUp: ScrollBy(0, -LineHeight);
     vkLeft: ScrollBy(-LineHeight, 0);
     vkRight: ScrollBy(LineHeight, 0);
-    vkNext: if ssCtrl in Shift then NextPage else ScrollBy(0, PageStep);
-    vkPrior: if ssCtrl in Shift then PreviousPage else ScrollBy(0, -PageStep);
+    vkNext: if ssCtrl in Shift then NextPage else ScrollOrFlip(PageStep);
+    vkPrior: if ssCtrl in Shift then PreviousPage else ScrollOrFlip(-PageStep);
     vkHome: if ssCtrl in Shift then GoToPage(0) else ScrollTo(FScrollX, 0);
     vkEnd: if ssCtrl in Shift then GoToPage(PageCount - 1) else ScrollTo(FScrollX, FLayout.MaxScrollY);
     vkAdd: ZoomIn;

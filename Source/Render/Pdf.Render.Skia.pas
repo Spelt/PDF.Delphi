@@ -129,14 +129,18 @@ type
   public
     constructor Create(ADocument: TPdfDocument);
     destructor Destroy; override;
-    /// <summary>Matrix that maps PDF user space of Page to device pixels at Scale (1 = 72 dpi), honouring CropBox and Rotate.</summary>
-    class function PageMatrix(Page: TPdfPage; Scale: Double): TPdfMatrix; static;
-    /// <summary>Pixel size of the page at Scale after rotation.</summary>
-    class procedure PageSizePixels(Page: TPdfPage; Scale: Double; out Width, Height: Integer); static;
+    /// <summary>Matrix that maps PDF user space of Page to device pixels at Scale (1 = 72 dpi), honouring CropBox and Rotate.
+    /// Rotation (0, 90, 180, 270, clockwise) is added to the page's own /Rotate, for a viewer that rotates the view.</summary>
+    class function PageMatrix(Page: TPdfPage; Scale: Double; Rotation: Integer = 0): TPdfMatrix; static;
+    /// <summary>Pixel size of the page at Scale after rotation (/Rotate plus Rotation).</summary>
+    class procedure PageSizePixels(Page: TPdfPage; Scale: Double; out Width, Height: Integer; Rotation: Integer = 0); static;
+    /// <summary>Total clockwise rotation of a page in the view: /Rotate plus Rotation, normalised to 0, 90, 180 or 270.</summary>
+    class function TotalRotation(Page: TPdfPage; Rotation: Integer): Integer; static;
     /// <summary>Renders Page onto Canvas; Matrix maps user space to the canvas (see PageMatrix). The background is not cleared.</summary>
     procedure RenderPage(Page: TPdfPage; const Canvas: ISkCanvas; const Matrix: TPdfMatrix);
     /// <summary>Renders Page to a new raster image at Scale with the given background colour.</summary>
-    function RenderToImage(Page: TPdfPage; Scale: Double; Background: TAlphaColor = TAlphaColorRec.White): ISkImage;
+    function RenderToImage(Page: TPdfPage; Scale: Double; Background: TAlphaColor = TAlphaColorRec.White;
+      Rotation: Integer = 0): ISkImage;
     /// <summary>Operators that raised an exception during the last RenderPage (rendering continues after each).</summary>
     property Errors: TList<TPdfRenderError> read FErrors;
     property ErrorCount: Integer read GetErrorCount;
@@ -241,12 +245,20 @@ begin
   Result := FErrors.Count;
 end;
 
-class function TPdfPageRenderer.PageMatrix(Page: TPdfPage; Scale: Double): TPdfMatrix;
+class function TPdfPageRenderer.TotalRotation(Page: TPdfPage; Rotation: Integer): Integer;
+begin
+  Result := (Page.Rotate + Rotation) mod 360;
+  if Result < 0 then
+    Inc(Result, 360);
+  Result := (Result div 90) * 90; // /Rotate is already a multiple of 90; guard odd callers
+end;
+
+class function TPdfPageRenderer.PageMatrix(Page: TPdfPage; Scale: Double; Rotation: Integer): TPdfMatrix;
 var
   Box: TPdfRectangle;
 begin
   Box := Page.CropBox.Normalized;
-  case Page.Rotate of
+  case TotalRotation(Page, Rotation) of
     90:  Result := TPdfMatrix.Create(0, Scale, Scale, 0, -Scale * Box.Y0, -Scale * Box.X0);
     180: Result := TPdfMatrix.Create(-Scale, 0, 0, Scale, Scale * Box.X1, -Scale * Box.Y0);
     270: Result := TPdfMatrix.Create(0, -Scale, -Scale, 0, Scale * Box.Y1, Scale * Box.X1);
@@ -255,13 +267,16 @@ begin
   end;
 end;
 
-class procedure TPdfPageRenderer.PageSizePixels(Page: TPdfPage; Scale: Double; out Width, Height: Integer);
+class procedure TPdfPageRenderer.PageSizePixels(Page: TPdfPage; Scale: Double; out Width, Height: Integer;
+  Rotation: Integer);
 var
   W, H: Double;
+  R: Integer;
 begin
   W := Page.CropBox.Width * Scale;
   H := Page.CropBox.Height * Scale;
-  if (Page.Rotate = 90) or (Page.Rotate = 270) then
+  R := TotalRotation(Page, Rotation);
+  if (R = 90) or (R = 270) then
   begin
     Width := Max(1, Round(H));
     Height := Max(1, Round(W));
@@ -273,17 +288,18 @@ begin
   end;
 end;
 
-function TPdfPageRenderer.RenderToImage(Page: TPdfPage; Scale: Double; Background: TAlphaColor): ISkImage;
+function TPdfPageRenderer.RenderToImage(Page: TPdfPage; Scale: Double; Background: TAlphaColor;
+  Rotation: Integer): ISkImage;
 var
   W, H: Integer;
   Surface: ISkSurface;
 begin
-  PageSizePixels(Page, Scale, W, H);
+  PageSizePixels(Page, Scale, W, H, Rotation);
   Surface := TSkSurface.MakeRaster(W, H);
   if Surface = nil then
     raise EPdfException.CreateFmt('Cannot allocate a %dx%d raster for page %d at scale %.2f', [W, H, Page.Index + 1, Scale]);
   Surface.Canvas.Clear(Background);
-  RenderPage(Page, Surface.Canvas, PageMatrix(Page, Scale));
+  RenderPage(Page, Surface.Canvas, PageMatrix(Page, Scale, Rotation));
   Result := Surface.MakeImageSnapshot;
 end;
 

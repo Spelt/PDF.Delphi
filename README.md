@@ -137,6 +137,17 @@ returns a page as an image for thumbnails or export.
 
 Further viewer features:
 
+- Layout: `DisplayMode` chooses continuous or one-row-at-a-time scrolling,
+  with single or facing pages (`FacingCoverPage` keeps the first page alone);
+  `Rotation` (0, 90, 180, 270) rotates the whole view on top of each page's
+  own `/Rotate`. `RowPages` returns the pages shown side by side.
+- Encrypted files: `OnPasswordRequest` asks the application for a password
+  and retries; without a handler the load fails with `EPdfPasswordError`.
+- Companion controls: `AddChangeListener` reports document, page, zoom,
+  scroll, rotation, layout, selection, search and rendered-image changes;
+  `RequestPageImage` / `TryGetPageImage` render through the viewer's own
+  background queue and cache. `TPdfThumbnails` (`FMX.PdfThumbnails`) uses
+  these for a thumbnail strip that follows and navigates a `TPdfViewer`.
 - Links: clicks follow GoTo destinations and Named actions directly; URIs go
   to `OnOpenURI` (the control never launches a browser itself). `OnLinkClick`
   can intercept any action.
@@ -147,7 +158,19 @@ Further viewer features:
   document, `FindNext`/`FindPrevious` (F3 / Shift+F3) jump to them, Esc
   clears. `TextPage(Index)` returns the extracted text with glyph positions.
   Text extraction briefly pauses the render thread, because the object model
-  is not thread-safe.
+  is not thread-safe. `SearchMatch(I)` and `GoToMatch(I)` expose the results
+  for a result list.
 - Input: mouse wheel scrolls (Ctrl+wheel zooms, Shift+wheel scrolls
   horizontally), drag pans, pinch and double-tap zoom on touch devices,
   keyboard navigation with the arrow, page and home/end keys, `+`/`-`/`0`.
+
+## Demo
+
+`Demo\PdfViewerDemo.dproj` is a complete viewer built on the two controls,
+with everything placed at design time: an icon toolbar with page field and
+zoom slider, a sidebar with thumbnails, bookmarks, search results and
+document properties, a status bar, light and dark theme (the dark theme is
+the `Dark.style` that ships with Delphi, embedded as a resource), drag and
+drop, recent files, rotation and page-layout modes, PNG export, clipboard
+(page image and text), printing, a password prompt and a keyboard-shortcut
+overlay (F1). Settings persist in `%APPDATA%\PdfViewerDemo\settings.ini`.

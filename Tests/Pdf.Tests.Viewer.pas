@@ -11,7 +11,7 @@ interface
 uses
   System.SysUtils, System.Types, System.Math, System.Classes, System.SyncObjs, System.Diagnostics,
   System.Generics.Collections, System.UITypes, System.Skia, DUnitX.TestFramework,
-  Pdf.Core.Document, Pdf.Viewer.Layout, Pdf.Viewer.Cache, Pdf.Viewer.RenderQueue;
+  Pdf.Core.Types, Pdf.Core.Document, Pdf.Render.Skia, Pdf.Viewer.Layout, Pdf.Viewer.Cache, Pdf.Viewer.RenderQueue;
 
 type
   [TestFixture]
@@ -39,6 +39,12 @@ type
     [Test] procedure Invalidation_GapMarginZoomViewport;
     [Test] procedure EmptyPages;
     [Test] procedure PageSizesFromDocument_Rotated;
+    [Test] procedure Facing_TwoColumns_Geometry;
+    [Test] procedure Facing_CoverPage_FirstAloneOnTheRight;
+    [Test] procedure Facing_Rows_And_FitZoom;
+    [Test] procedure NonContinuous_OnlyActiveRowLaidOut;
+    [Test] procedure NonContinuous_CurrentPage_And_ScrollTop;
+    [Test] procedure Renderer_PageMatrix_ExtraRotation;
   end;
 
   [TestFixture]
@@ -404,6 +410,132 @@ begin
   Assert.AreEqual(100.0, Double(FLayout.PageRect[0].Width), Eps, 'rotated: width is the MediaBox height');
   Assert.AreEqual(200.0, Double(FLayout.PageRect[0].Height), Eps);
   Assert.AreEqual(8.0 + 200 + 8 + 200 + 8, FLayout.TotalHeight, Eps);
+end;
+
+procedure TPdfPageLayoutTests.Facing_TwoColumns_Geometry;
+var
+  R0, R1, R2: TRectF;
+begin
+  FLayout.SetPages([TSizeF.Create(100, 150), TSizeF.Create(100, 150), TSizeF.Create(100, 150)]);
+  FLayout.ViewportWidth := 400;
+  FLayout.Columns := 2;
+  R0 := FLayout.PageRect[0];
+  R1 := FLayout.PageRect[1];
+  R2 := FLayout.PageRect[2];
+  Assert.AreEqual(2, FLayout.RowCount, 'three pages make two rows');
+  Assert.AreEqual(400.0, FLayout.TotalWidth, Eps);
+  Assert.AreEqual(200.0 - 4 - 100, Double(R0.Left), Eps, 'left page ends half a gap left of the centre');
+  Assert.AreEqual(200.0 + 4, Double(R1.Left), Eps, 'right page starts half a gap right of the centre');
+  Assert.AreEqual(Double(R0.Top), Double(R1.Top), Eps, 'pages of a row share the top');
+  Assert.AreEqual(8.0 + 150 + 8, Double(R2.Top), Eps, 'second row below the first');
+  Assert.AreEqual(Double(R0.Left), Double(R2.Left), Eps, 'odd last page sits in the left column');
+  Assert.AreEqual(8.0 + 150 + 8 + 150 + 8, FLayout.TotalHeight, Eps);
+  Assert.AreEqual(0, FLayout.RowOfPage(1));
+  Assert.AreEqual(1, FLayout.RowOfPage(2));
+  Assert.AreEqual(2, Integer(Length(FLayout.RowPages(0))));
+  Assert.AreEqual(1, Integer(Length(FLayout.RowPages(1))));
+  Assert.AreEqual(2, FLayout.FirstPageOfRow(1));
+  Assert.AreEqual(-1, FLayout.FirstPageOfRow(2));
+  Assert.AreEqual(0, FLayout.PageAt(100, 50), 'left column hit');
+  Assert.AreEqual(1, FLayout.PageAt(250, 50), 'right column hit');
+  Assert.AreEqual(-1, FLayout.PageAt(200, 50), 'the gap between the columns');
+end;
+
+procedure TPdfPageLayoutTests.Facing_CoverPage_FirstAloneOnTheRight;
+begin
+  FLayout.SetPages([TSizeF.Create(100, 150), TSizeF.Create(100, 150), TSizeF.Create(100, 150)]);
+  FLayout.ViewportWidth := 400;
+  FLayout.Columns := 2;
+  FLayout.CoverPage := True;
+  Assert.AreEqual(2, FLayout.RowCount, 'cover + one pair');
+  Assert.AreEqual(204.0, Double(FLayout.PageRect[0].Left), Eps, 'cover page in the right column');
+  Assert.AreEqual(96.0, Double(FLayout.PageRect[1].Left), Eps);
+  Assert.AreEqual(204.0, Double(FLayout.PageRect[2].Left), Eps);
+  Assert.AreEqual(Double(FLayout.PageRect[1].Top), Double(FLayout.PageRect[2].Top), Eps, 'pages 2-3 face each other');
+  Assert.AreEqual(1, FLayout.RowOfPage(2));
+end;
+
+procedure TPdfPageLayoutTests.Facing_Rows_And_FitZoom;
+begin
+  FLayout.SetPages([TSizeF.Create(100, 150), TSizeF.Create(100, 150)]);
+  FLayout.ViewportWidth := 424; // 2 x 100 points at zoom 2 + gap 8 + margins 16
+  FLayout.ViewportHeight := 316; // 150 points + margins 16 at zoom 2
+  FLayout.Columns := 2;
+  Assert.AreEqual(2.0, FLayout.FitWidthZoom, Eps, 'fit width spans both columns');
+  Assert.AreEqual(2.0, FLayout.FitPageZoom(0), Eps, 'fit page fits the row in both directions');
+  FLayout.ViewportHeight := 166;
+  Assert.AreEqual(1.0, FLayout.FitPageZoom(1), Eps, 'height limits the row');
+end;
+
+procedure TPdfPageLayoutTests.NonContinuous_OnlyActiveRowLaidOut;
+var
+  Visible: TArray<TPdfPageRect>;
+begin
+  FLayout.SetPages([TSizeF.Create(100, 150), TSizeF.Create(100, 150), TSizeF.Create(100, 150)]);
+  FLayout.Continuous := False;
+  FLayout.ActivePage := 1;
+  Assert.IsFalse(FLayout.IsPageLaidOut(0));
+  Assert.IsTrue(FLayout.IsPageLaidOut(1));
+  Assert.IsFalse(FLayout.IsPageLaidOut(2));
+  Assert.AreEqual(8.0 + 150 + 8, FLayout.TotalHeight, Eps, 'only one page high');
+  Assert.AreEqual(8.0, Double(FLayout.PageRect[1].Top), Eps, 'the active page is at the top');
+  Visible := FLayout.VisiblePages(0, 0);
+  Assert.AreEqual(1, Integer(Length(Visible)));
+  Assert.AreEqual(1, Visible[0].Index);
+  Assert.AreEqual(0.0, FLayout.ScrollTopOfPage(2), Eps, 'pages outside the active row give 0');
+  FLayout.Columns := 2;
+  Assert.IsTrue(FLayout.IsPageLaidOut(0), 'page 0 and 1 share the active row now');
+  Assert.IsTrue(FLayout.IsPageLaidOut(1));
+  Assert.IsFalse(FLayout.IsPageLaidOut(2));
+  FLayout.Continuous := True;
+  Assert.IsTrue(FLayout.IsPageLaidOut(2), 'continuous again: everything laid out');
+end;
+
+procedure TPdfPageLayoutTests.NonContinuous_CurrentPage_And_ScrollTop;
+begin
+  FLayout.SetPages([TSizeF.Create(100, 150), TSizeF.Create(100, 150), TSizeF.Create(100, 150)]);
+  FLayout.Continuous := False;
+  FLayout.ActivePage := 2;
+  Assert.AreEqual(2, FLayout.CurrentPage(0, 0));
+  Assert.AreEqual(2, FLayout.CurrentPage(0, 5000), 'scrolled past the end: still the active row');
+  Assert.AreEqual(0.0, FLayout.MaxScrollY, Eps, 'one page fits the 600 px viewport');
+  FLayout.ActivePage := 5;
+  Assert.AreEqual(2, FLayout.ActivePage, 'clamped to the last page');
+end;
+
+procedure TPdfPageLayoutTests.Renderer_PageMatrix_ExtraRotation;
+var
+  B: TPdfTestBuilder;
+  Doc: TPdfDocument;
+  W, H: Integer;
+  M: TPdfMatrix;
+  X, Y: Double;
+begin
+  B := TPdfTestBuilder.SimpleDocument(1, '', '/MediaBox [0 0 200 100] /Rotate 90');
+  Doc := TPdfDocument.Create;
+  try
+    Doc.LoadFromBytes(B.Build(1));
+    Assert.AreEqual(90, TPdfPageRenderer.TotalRotation(Doc.Pages[0], 0));
+    Assert.AreEqual(180, TPdfPageRenderer.TotalRotation(Doc.Pages[0], 90));
+    Assert.AreEqual(0, TPdfPageRenderer.TotalRotation(Doc.Pages[0], 270));
+    Assert.AreEqual(0, TPdfPageRenderer.TotalRotation(Doc.Pages[0], -90));
+    TPdfPageRenderer.PageSizePixels(Doc.Pages[0], 1, W, H);
+    Assert.AreEqual(100, W, '/Rotate 90 alone: portrait');
+    Assert.AreEqual(200, H);
+    TPdfPageRenderer.PageSizePixels(Doc.Pages[0], 1, W, H, 90);
+    Assert.AreEqual(200, W, 'plus 90: landscape again');
+    Assert.AreEqual(100, H);
+    // With a total rotation of 180 the user-space origin lands bottom-right
+    M := TPdfPageRenderer.PageMatrix(Doc.Pages[0], 1, 90);
+    X := 0;
+    Y := 0;
+    M.Apply(X, Y);
+    Assert.AreEqual(200.0, X, Eps);
+    Assert.AreEqual(0.0, Y, Eps);
+  finally
+    Doc.Free;
+    B.Free;
+  end;
 end;
 
 { ---------------------------------------------------------------------------- }

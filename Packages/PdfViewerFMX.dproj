@@ -123,6 +123,7 @@
         <DCCReference Include="..\Source\Viewer\Pdf.Viewer.Cache.pas"/>
         <DCCReference Include="..\Source\Viewer\Pdf.Viewer.RenderQueue.pas"/>
         <DCCReference Include="..\Source\Viewer\FMX.PdfViewer.pas"/>
+        <DCCReference Include="..\Source\Viewer\FMX.PdfThumbnails.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

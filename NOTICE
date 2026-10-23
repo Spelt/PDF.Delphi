@@ -14,3 +14,7 @@ cross-reference reconstruction (Pdf.Core.XRef), stream filters
 Pdf.Core.Encryption).
 
 The test PDFs under Tests/Data were generated for this project.
+
+Demo/Styles/Dark.style is the "Dark" FireMonkey style that ships with
+Embarcadero Delphi, redistributed with the demo application under the Delphi
+license terms for style files. It is only used by Demo/PdfViewerDemo.

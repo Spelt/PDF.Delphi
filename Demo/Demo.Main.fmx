@@ -1,228 +1,1295 @@
 object MainForm: TMainForm
   Left = 0
   Top = 0
-  Caption = 'PdfViewer demo'
-  ClientHeight = 700
-  ClientWidth = 960
+  Caption = 'PDF Viewer'
+  ClientHeight = 760
+  ClientWidth = 1200
   Position = ScreenCenter
   FormFactor.Width = 320
   FormFactor.Height = 480
   FormFactor.Devices = [Desktop]
   OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnClose = FormClose
+  OnKeyDown = FormKeyDown
   DesignerMasterStyle = 0
   object ToolBar: TToolBar
-    Size.Width = 960.000000000000000000
-    Size.Height = 40.000000000000000000
+    Size.Width = 1200.000000000000000000
+    Size.Height = 44.000000000000000000
     Size.PlatformDefault = False
     TabOrder = 0
+    OnDragOver = FileDragOver
+    OnDragDrop = FileDragDrop
+    OnDragLeave = FileDragLeave
+    object SidebarButton: TSpeedButton
+      Align = Left
+      Hint = 'Zijpaneel (Ctrl+B)'
+      Margins.Left = 4.000000000000000000
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 4.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actSidebarExecute
+      object SidebarIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
     object OpenButton: TSpeedButton
       Align = Left
-      Margins.Left = 4.000000000000000000
-      Margins.Top = 4.000000000000000000
-      Margins.Bottom = 4.000000000000000000
-      Position.X = 4.000000000000000000
-      Position.Y = 4.000000000000000000
-      Size.Width = 72.000000000000000000
-      Size.Height = 32.000000000000000000
+      Hint = 'Openen (Ctrl+O)'
+      Margins.Left = 6.000000000000000000
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 44.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
       Size.PlatformDefault = False
-      Text = 'Openen'
-      OnClick = OpenButtonClick
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actOpenExecute
+      object OpenIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
+    object RecentButton: TSpeedButton
+      Align = Left
+      Hint = 'Recente bestanden'
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 78.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 18.000000000000000000
+      Size.Height = 34.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = RecentButtonClick
+      object RecentIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 1.000000000000000000
+        Margins.Top = 9.000000000000000000
+        Margins.Right = 1.000000000000000000
+        Margins.Bottom = 9.000000000000000000
+        Size.Width = 16.000000000000000000
+        Size.Height = 16.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
+    object FirstButton: TSpeedButton
+      Align = Left
+      Hint = 'Eerste pagina (Ctrl+Home)'
+      Margins.Left = 12.000000000000000000
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 108.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actFirstPageExecute
+      object FirstIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
     end
     object PrevButton: TSpeedButton
       Align = Left
-      Margins.Left = 12.000000000000000000
-      Margins.Top = 4.000000000000000000
-      Margins.Bottom = 4.000000000000000000
-      Position.X = 88.000000000000000000
-      Position.Y = 4.000000000000000000
-      Size.Width = 32.000000000000000000
-      Size.Height = 32.000000000000000000
+      Hint = 'Vorige pagina (Ctrl+PgUp)'
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 142.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
       Size.PlatformDefault = False
-      Text = '<'
-      OnClick = PrevButtonClick
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actPrevPageExecute
+      object PrevIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
     end
-    object PageLabel: TLabel
+    object PageEdit: TEdit
+      Touch.InteractiveGestures = [LongTap, DoubleTap]
       Align = Left
+      TabOrder = 1
+      Hint = 'Paginanummer (Ctrl+G)'
+      Position.X = 180.000000000000000000
+      Position.Y = 8.000000000000000000
       Margins.Left = 4.000000000000000000
-      Position.X = 124.000000000000000000
-      Size.Width = 72.000000000000000000
-      Size.Height = 40.000000000000000000
+      Margins.Top = 8.000000000000000000
+      Margins.Bottom = 8.000000000000000000
+      ShowHint = True
+      Size.Width = 50.000000000000000000
+      Size.Height = 28.000000000000000000
       Size.PlatformDefault = False
       TextSettings.HorzAlign = Center
-      Text = '- / -'
-      TabOrder = 1
+      OnKeyDown = PageEditKeyDown
+      OnExit = PageEditExit
+    end
+    object PageCountLabel: TLabel
+      Align = Left
+      Margins.Left = 4.000000000000000000
+      Position.X = 234.000000000000000000
+      Size.Width = 54.000000000000000000
+      Size.Height = 44.000000000000000000
+      Size.PlatformDefault = False
+      Text = '/ -'
+      TabOrder = 2
     end
     object NextButton: TSpeedButton
       Align = Left
-      Margins.Top = 4.000000000000000000
-      Margins.Bottom = 4.000000000000000000
-      Position.X = 196.000000000000000000
-      Position.Y = 4.000000000000000000
-      Size.Width = 32.000000000000000000
-      Size.Height = 32.000000000000000000
+      Hint = 'Volgende pagina (Ctrl+PgDn)'
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 290.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
       Size.PlatformDefault = False
-      Text = '>'
-      OnClick = NextButtonClick
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actNextPageExecute
+      object NextIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
+    object LastButton: TSpeedButton
+      Align = Left
+      Hint = 'Laatste pagina (Ctrl+End)'
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 324.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actLastPageExecute
+      object LastIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
     end
     object ZoomOutButton: TSpeedButton
       Align = Left
-      Margins.Left = 12.000000000000000000
-      Margins.Top = 4.000000000000000000
-      Margins.Bottom = 4.000000000000000000
-      Position.X = 240.000000000000000000
-      Position.Y = 4.000000000000000000
-      Size.Width = 32.000000000000000000
-      Size.Height = 32.000000000000000000
+      Hint = 'Uitzoomen (Ctrl+Min)'
+      Margins.Left = 14.000000000000000000
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 372.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
       Size.PlatformDefault = False
-      Text = '-'
-      OnClick = ZoomOutButtonClick
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actZoomOutExecute
+      object ZoomOutIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
     end
-    object ZoomLabel: TLabel
+    object ZoomTrack: TTrackBar
       Align = Left
-      Position.X = 272.000000000000000000
-      Size.Width = 56.000000000000000000
-      Size.Height = 40.000000000000000000
+      CanParentFocus = True
+      Hint = 'Zoom'
+      Margins.Left = 2.000000000000000000
+      Margins.Top = 12.000000000000000000
+      Margins.Right = 2.000000000000000000
+      Margins.Bottom = 12.000000000000000000
+      Max = 1000.000000000000000000
+      Orientation = Horizontal
+      Position.X = 408.000000000000000000
+      Position.Y = 12.000000000000000000
+      ShowHint = True
+      Size.Width = 120.000000000000000000
+      Size.Height = 20.000000000000000000
       Size.PlatformDefault = False
-      TextSettings.HorzAlign = Center
-      Text = '100%'
-      TabOrder = 5
+      TabOrder = 3
+      Value = 450.000000000000000000
+      OnChange = ZoomTrackChange
     end
     object ZoomInButton: TSpeedButton
       Align = Left
-      Margins.Top = 4.000000000000000000
-      Margins.Bottom = 4.000000000000000000
-      Position.X = 328.000000000000000000
-      Position.Y = 4.000000000000000000
-      Size.Width = 32.000000000000000000
-      Size.Height = 32.000000000000000000
+      Hint = 'Inzoomen (Ctrl+Plus)'
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 530.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
       Size.PlatformDefault = False
-      Text = '+'
-      OnClick = ZoomInButtonClick
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actZoomInExecute
+      object ZoomInIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
+    object ZoomButton: TSpeedButton
+      Align = Left
+      Hint = 'Zoomniveau kiezen'
+      Margins.Left = 2.000000000000000000
+      Margins.Top = 8.000000000000000000
+      Margins.Bottom = 8.000000000000000000
+      Position.X = 566.000000000000000000
+      Position.Y = 8.000000000000000000
+      ShowHint = True
+      Size.Width = 62.000000000000000000
+      Size.Height = 28.000000000000000000
+      Size.PlatformDefault = False
+      Text = '100%'
+      OnClick = ZoomButtonClick
     end
     object FitWidthButton: TSpeedButton
       Align = Left
+      Hint = 'Breedte passend (Ctrl+0)'
       Margins.Left = 12.000000000000000000
-      Margins.Top = 4.000000000000000000
-      Margins.Bottom = 4.000000000000000000
-      Position.X = 372.000000000000000000
-      Position.Y = 4.000000000000000000
-      Size.Width = 80.000000000000000000
-      Size.Height = 32.000000000000000000
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 640.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
       Size.PlatformDefault = False
-      Text = 'Breedte'
-      OnClick = FitWidthButtonClick
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actFitWidthExecute
+      object FitWidthIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
     end
     object FitPageButton: TSpeedButton
       Align = Left
-      Margins.Left = 4.000000000000000000
-      Margins.Top = 4.000000000000000000
-      Margins.Bottom = 4.000000000000000000
-      Position.X = 456.000000000000000000
-      Position.Y = 4.000000000000000000
-      Size.Width = 80.000000000000000000
-      Size.Height = 32.000000000000000000
+      Hint = 'Pagina passend (Ctrl+9)'
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 674.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
       Size.PlatformDefault = False
-      Text = 'Pagina'
-      OnClick = FitPageButtonClick
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actFitPageExecute
+      object FitPageIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
     end
-    object OutlineButton: TSpeedButton
+    object RotateLeftButton: TSpeedButton
       Align = Left
-      Enabled = False
+      Hint = 'Linksom draaien (Ctrl+Shift+R)'
       Margins.Left = 12.000000000000000000
-      Margins.Top = 4.000000000000000000
-      Margins.Bottom = 4.000000000000000000
-      Position.X = 548.000000000000000000
-      Position.Y = 4.000000000000000000
-      Size.Width = 90.000000000000000000
-      Size.Height = 32.000000000000000000
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 720.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
       Size.PlatformDefault = False
-      Text = 'Bladwijzers'
-      OnClick = OutlineButtonClick
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actRotateLeftExecute
+      object RotateLeftIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
+    object RotateRightButton: TSpeedButton
+      Align = Left
+      Hint = 'Rechtsom draaien (Ctrl+R)'
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 754.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actRotateRightExecute
+      object RotateRightIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
+    object LayoutButton: TSpeedButton
+      Align = Left
+      Hint = 'Paginaweergave (Ctrl+Shift+1..4)'
+      Margins.Left = 4.000000000000000000
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 792.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = LayoutButtonClick
+      object LayoutIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
+    object HelpButton: TSpeedButton
+      Align = Right
+      Hint = 'Sneltoetsen (F1)'
+      Margins.Top = 5.000000000000000000
+      Margins.Right = 4.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 1162.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actHelpExecute
+      object HelpIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
+    object ThemeButton: TSpeedButton
+      Align = Right
+      Hint = 'Licht/donker thema (Ctrl+T)'
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 1128.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actThemeExecute
+      object ThemeIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
+    object FullScreenButton: TSpeedButton
+      Align = Right
+      Hint = 'Volledig scherm (F11)'
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 1094.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actFullScreenExecute
+      object FullScreenIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
+    object InfoButton: TSpeedButton
+      Align = Right
+      Hint = 'Documenteigenschappen (Ctrl+I)'
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 1060.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actPropertiesExecute
+      object InfoIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
+    object PrintButton: TSpeedButton
+      Align = Right
+      Hint = 'Afdrukken (Ctrl+P)'
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 1026.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actPrintExecute
+      object PrintIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
+    object ExportButton: TSpeedButton
+      Align = Right
+      Hint = 'Exporteren en kopi'#235'ren'
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 992.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 34.000000000000000000
+      Size.Height = 34.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = ExportButtonClick
+      object ExportIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 7.000000000000000000
+        Margins.Top = 7.000000000000000000
+        Margins.Right = 7.000000000000000000
+        Margins.Bottom = 7.000000000000000000
+        Size.Width = 20.000000000000000000
+        Size.Height = 20.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
+    object FindNextButton: TSpeedButton
+      Align = Right
+      Hint = 'Volgende resultaat (F3)'
+      Margins.Top = 5.000000000000000000
+      Margins.Right = 10.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 948.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 30.000000000000000000
+      Size.Height = 34.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actFindNextExecute
+      object FindNextIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 6.000000000000000000
+        Margins.Top = 8.000000000000000000
+        Margins.Right = 6.000000000000000000
+        Margins.Bottom = 8.000000000000000000
+        Size.Width = 18.000000000000000000
+        Size.Height = 18.000000000000000000
+        Size.PlatformDefault = False
+      end
+    end
+    object FindPrevButton: TSpeedButton
+      Align = Right
+      Hint = 'Vorige resultaat (Shift+F3)'
+      Margins.Top = 5.000000000000000000
+      Margins.Bottom = 5.000000000000000000
+      Position.X = 918.000000000000000000
+      Position.Y = 5.000000000000000000
+      ShowHint = True
+      Size.Width = 30.000000000000000000
+      Size.Height = 34.000000000000000000
+      Size.PlatformDefault = False
+      StyleLookup = 'transparentbuttonstyle'
+      OnClick = actFindPrevExecute
+      object FindPrevIcon: TSkSvg
+        Align = Client
+        HitTest = False
+        Margins.Left = 6.000000000000000000
+        Margins.Top = 8.000000000000000000
+        Margins.Right = 6.000000000000000000
+        Margins.Bottom = 8.000000000000000000
+        Size.Width = 18.000000000000000000
+        Size.Height = 18.000000000000000000
+        Size.PlatformDefault = False
+      end
     end
     object SearchEdit: TEdit
       Touch.InteractiveGestures = [LongTap, DoubleTap]
       Align = Right
-      TabOrder = 10
-      Position.X = 728.000000000000000000
-      Position.Y = 6.000000000000000000
-      Margins.Top = 6.000000000000000000
-      Margins.Right = 4.000000000000000000
-      Margins.Bottom = 6.000000000000000000
-      Size.Width = 160.000000000000000000
+      TabOrder = 4
+      Hint = 'Zoeken in het document (Ctrl+F)'
+      Position.X = 720.000000000000000000
+      Position.Y = 8.000000000000000000
+      Margins.Left = 8.000000000000000000
+      Margins.Top = 8.000000000000000000
+      Margins.Bottom = 8.000000000000000000
+      ShowHint = True
+      Size.Width = 196.000000000000000000
       Size.Height = 28.000000000000000000
       Size.PlatformDefault = False
       TextPrompt = 'Zoeken (Enter)'
       OnKeyDown = SearchEditKeyDown
     end
-    object FindPrevButton: TSpeedButton
-      Align = Right
-      Margins.Top = 4.000000000000000000
-      Margins.Bottom = 4.000000000000000000
-      Position.X = 892.000000000000000000
-      Position.Y = 4.000000000000000000
-      Size.Width = 32.000000000000000000
-      Size.Height = 32.000000000000000000
-      Size.PlatformDefault = False
-      Text = #9650
-      OnClick = FindPrevButtonClick
-    end
-    object FindNextButton: TSpeedButton
-      Align = Right
-      Margins.Top = 4.000000000000000000
-      Margins.Right = 4.000000000000000000
-      Margins.Bottom = 4.000000000000000000
-      Position.X = 924.000000000000000000
-      Position.Y = 4.000000000000000000
-      Size.Width = 32.000000000000000000
-      Size.Height = 32.000000000000000000
-      Size.PlatformDefault = False
-      Text = #9660
-      OnClick = FindNextButtonClick
-    end
-    object StatusLabel: TLabel
-      Align = Client
-      Margins.Left = 16.000000000000000000
-      Margins.Right = 8.000000000000000000
-      Size.Width = 66.000000000000000000
-      Size.Height = 40.000000000000000000
-      Size.PlatformDefault = False
-      TabOrder = 9
-    end
   end
-  object OutlineList: TListBox
-    Align = Left
-    Position.Y = 40.000000000000000000
-    Size.Width = 260.000000000000000000
-    Size.Height = 660.000000000000000000
+  object StatusBar: TStatusBar
+    Position.Y = 736.000000000000000000
+    ShowSizeGrip = False
+    Size.Width = 1200.000000000000000000
+    Size.Height = 24.000000000000000000
     Size.PlatformDefault = False
     TabOrder = 1
-    Visible = False
-    DisableFocusEffect = True
-    DefaultItemStyles.ItemStyle = ''
-    DefaultItemStyles.GroupHeaderStyle = ''
-    DefaultItemStyles.GroupFooterStyle = ''
-    OnItemClick = OutlineListItemClick
-    Viewport.Width = 256.000000000000000000
-    Viewport.Height = 656.000000000000000000
+    object StatusLabel: TLabel
+      Align = Client
+      Margins.Left = 10.000000000000000000
+      Margins.Right = 8.000000000000000000
+      Size.Width = 702.000000000000000000
+      Size.Height = 24.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 0
+    end
+    object InfoLabel: TLabel
+      Align = Right
+      Margins.Right = 10.000000000000000000
+      Position.X = 720.000000000000000000
+      Size.Width = 470.000000000000000000
+      Size.Height = 24.000000000000000000
+      Size.PlatformDefault = False
+      TextSettings.HorzAlign = Trailing
+      TabOrder = 1
+    end
   end
-  object Viewer: TPdfViewer
+  object Body: TLayout
     Align = Client
-    CanFocus = True
-    Size.Width = 700.000000000000000000
-    Size.Height = 660.000000000000000000
+    Position.Y = 44.000000000000000000
+    Size.Width = 1200.000000000000000000
+    Size.Height = 692.000000000000000000
     Size.PlatformDefault = False
     TabOrder = 2
-    TabStop = True
-    Touch.InteractiveGestures = [Zoom, DoubleTap]
-    OnPageChange = ViewerPageChange
-    OnLoadError = ViewerLoadError
-    OnZoomChange = ViewerZoomChange
-    OnOpenURI = ViewerOpenURI
-    OnSelectionChange = ViewerSelectionChange
+    object Sidebar: TLayout
+      Align = Left
+      Size.Width = 280.000000000000000000
+      Size.Height = 692.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 0
+      OnDragOver = FileDragOver
+      OnDragDrop = FileDragDrop
+      OnDragLeave = FileDragLeave
+      object SideTabs: TTabControl
+        Align = Client
+        FullSize = True
+        Size.Width = 240.000000000000000000
+        Size.Height = 692.000000000000000000
+        Size.PlatformDefault = False
+        TabIndex = 0
+        TabOrder = 0
+        TabPosition = Top
+        object TabPages: TTabItem
+          CustomIcon = <
+            item
+            end>
+          IsSelected = True
+          Size.Width = 66.000000000000000000
+          Size.Height = 26.000000000000000000
+          Size.PlatformDefault = False
+          StyleLookup = ''
+          TabOrder = 0
+          Text = 'Pagina'#39's'
+          object Thumbs: TPdfThumbnails
+            Align = Client
+            Size.Width = 240.000000000000000000
+            Size.Height = 666.000000000000000000
+            Size.PlatformDefault = False
+            TabOrder = 0
+            Viewer = Viewer
+            ThumbnailWidth = 130.000000000000000000
+            Spacing = 14.000000000000000000
+            Inset = 12.000000000000000000
+          end
+        end
+        object TabOutline: TTabItem
+          CustomIcon = <
+            item
+            end>
+          IsSelected = False
+          Size.Width = 84.000000000000000000
+          Size.Height = 26.000000000000000000
+          Size.PlatformDefault = False
+          StyleLookup = ''
+          TabOrder = 0
+          Text = 'Inhoud'
+          object OutlineTree: TTreeView
+            Align = Client
+            Size.Width = 240.000000000000000000
+            Size.Height = 666.000000000000000000
+            Size.PlatformDefault = False
+            TabOrder = 0
+            OnChange = OutlineTreeChange
+          end
+        end
+        object TabSearch: TTabItem
+          CustomIcon = <
+            item
+            end>
+          IsSelected = False
+          Size.Width = 60.000000000000000000
+          Size.Height = 26.000000000000000000
+          Size.PlatformDefault = False
+          StyleLookup = ''
+          TabOrder = 0
+          Text = 'Zoeken'
+          object SearchOptions: TLayout
+            Align = Top
+            Size.Width = 240.000000000000000000
+            Size.Height = 56.000000000000000000
+            Size.PlatformDefault = False
+            TabOrder = 0
+            object CaseCheck: TCheckBox
+              Align = Top
+              Margins.Left = 8.000000000000000000
+              Margins.Top = 6.000000000000000000
+              Margins.Right = 8.000000000000000000
+              Position.X = 8.000000000000000000
+              Position.Y = 6.000000000000000000
+              Size.Width = 224.000000000000000000
+              Size.Height = 22.000000000000000000
+              Size.PlatformDefault = False
+              TabOrder = 0
+              Text = 'Hoofdlettergevoelig'
+              OnChange = SearchOptionChange
+            end
+            object WholeWordCheck: TCheckBox
+              Align = Top
+              Margins.Left = 8.000000000000000000
+              Margins.Top = 2.000000000000000000
+              Margins.Right = 8.000000000000000000
+              Position.X = 8.000000000000000000
+              Position.Y = 30.000000000000000000
+              Size.Width = 224.000000000000000000
+              Size.Height = 22.000000000000000000
+              Size.PlatformDefault = False
+              TabOrder = 1
+              Text = 'Alleen hele woorden'
+              OnChange = SearchOptionChange
+            end
+          end
+          object ResultsLabel: TLabel
+            Align = Top
+            Margins.Left = 8.000000000000000000
+            Margins.Top = 4.000000000000000000
+            Margins.Right = 8.000000000000000000
+            Margins.Bottom = 2.000000000000000000
+            Position.X = 8.000000000000000000
+            Position.Y = 60.000000000000000000
+            Size.Width = 224.000000000000000000
+            Size.Height = 20.000000000000000000
+            Size.PlatformDefault = False
+            TabOrder = 1
+          end
+          object ResultsList: TListBox
+            Align = Client
+            Size.Width = 240.000000000000000000
+            Size.Height = 584.000000000000000000
+            Size.PlatformDefault = False
+            TabOrder = 2
+            DisableFocusEffect = True
+            DefaultItemStyles.ItemStyle = ''
+            DefaultItemStyles.GroupHeaderStyle = ''
+            DefaultItemStyles.GroupFooterStyle = ''
+            OnItemClick = ResultsListItemClick
+          end
+        end
+        object TabInfo: TTabItem
+          CustomIcon = <
+            item
+            end>
+          IsSelected = False
+          Size.Width = 40.000000000000000000
+          Size.Height = 26.000000000000000000
+          Size.PlatformDefault = False
+          StyleLookup = ''
+          TabOrder = 0
+          Text = 'Info'
+          object InfoGrid: TStringGrid
+            Align = Client
+            CanFocus = True
+            ClipChildren = True
+            Size.Width = 240.000000000000000000
+            Size.Height = 666.000000000000000000
+            Size.PlatformDefault = False
+            TabOrder = 0
+            RowCount = 0
+            Options = [ColumnResize, ColLines, RowLines, RowSelect, Header, AutoDisplacement]
+            TabStop = True
+            object KeyColumn: TStringColumn
+              Header = 'Eigenschap'
+              ReadOnly = True
+              Size.Width = 96.000000000000000000
+            end
+            object ValueColumn: TStringColumn
+              Header = 'Waarde'
+              ReadOnly = True
+              Size.Width = 320.000000000000000000
+            end
+          end
+        end
+      end
+    end
+    object Splitter: TSplitter
+      Align = Left
+      Cursor = crHSplit
+      MinSize = 160.000000000000000000
+      Position.X = 240.000000000000000000
+      Size.Width = 6.000000000000000000
+      Size.Height = 692.000000000000000000
+      Size.PlatformDefault = False
+    end
+    object Viewer: TPdfViewer
+      Touch.InteractiveGestures = [Zoom, DoubleTap]
+      Align = Client
+      Position.X = 246.000000000000000000
+      Size.Width = 954.000000000000000000
+      Size.Height = 692.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 1
+      MinZoom = 0.100000000000000000
+      MaxZoom = 16.000000000000000000
+      PageGap = 12.000000000000000000
+      PageMargin = 12.000000000000000000
+      OnLoadError = ViewerLoadError
+      OnPasswordRequest = ViewerPasswordRequest
+      OnOpenURI = ViewerOpenURI
+      OnSelectionChange = ViewerSelectionChange
+      OnDragOver = FileDragOver
+      OnDragDrop = FileDragDrop
+      OnDragLeave = FileDragLeave
+    end
+    object HelpOverlay: TRectangle
+      Align = Client
+      Fill.Color = xB0000000
+      Size.Width = 1200.000000000000000000
+      Size.Height = 692.000000000000000000
+      Size.PlatformDefault = False
+      Stroke.Kind = None
+      Visible = False
+      OnClick = HelpOverlayClick
+      object HelpPanel: TRectangle
+        Align = Center
+        Fill.Color = xFF2B2B2B
+        Size.Width = 640.000000000000000000
+        Size.Height = 620.000000000000000000
+        Size.PlatformDefault = False
+        Stroke.Kind = None
+        XRadius = 10.000000000000000000
+        YRadius = 10.000000000000000000
+        object HelpTitle: TLabel
+          Align = Top
+          StyledSettings = [Family, FontColor]
+          Margins.Left = 20.000000000000000000
+          Margins.Top = 14.000000000000000000
+          Margins.Right = 20.000000000000000000
+          Position.X = 20.000000000000000000
+          Position.Y = 14.000000000000000000
+          Size.Width = 600.000000000000000000
+          Size.Height = 32.000000000000000000
+          Size.PlatformDefault = False
+          TextSettings.Font.Size = 18.000000000000000000
+          TextSettings.Font.StyleExt = {00070000000000000004000000}
+          Text = 'Sneltoetsen'
+          TabOrder = 0
+        end
+        object HelpMemo: TMemo
+          Touch.InteractiveGestures = [Pan, LongTap, DoubleTap]
+          DataDetectorTypes = []
+          ReadOnly = True
+          StyledSettings = [Style, FontColor]
+          TextSettings.Font.Family = 'Consolas'
+          TextSettings.Font.Size = 12.000000000000000000
+          Align = Client
+          Margins.Left = 20.000000000000000000
+          Margins.Top = 6.000000000000000000
+          Margins.Right = 20.000000000000000000
+          Margins.Bottom = 8.000000000000000000
+          Size.Width = 600.000000000000000000
+          Size.Height = 506.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 1
+        end
+        object HelpCloseButton: TButton
+          Align = Bottom
+          Margins.Left = 520.000000000000000000
+          Margins.Right = 20.000000000000000000
+          Margins.Bottom = 14.000000000000000000
+          Position.X = 520.000000000000000000
+          Position.Y = 578.000000000000000000
+          Size.Width = 100.000000000000000000
+          Size.Height = 28.000000000000000000
+          Size.PlatformDefault = False
+          TabOrder = 2
+          Text = 'Sluiten'
+          OnClick = HelpOverlayClick
+        end
+      end
+    end
+    object DropOverlay: TRectangle
+      Align = Client
+      Fill.Color = x703D8BFF
+      HitTest = False
+      Size.Width = 1200.000000000000000000
+      Size.Height = 692.000000000000000000
+      Size.PlatformDefault = False
+      Stroke.Color = xFF3D8BFF
+      Stroke.Thickness = 4.000000000000000000
+      Visible = False
+      object DropLabel: TLabel
+        Align = Client
+        StyledSettings = [Family]
+        Size.Width = 1200.000000000000000000
+        Size.Height = 692.000000000000000000
+        Size.PlatformDefault = False
+        TextSettings.Font.Size = 28.000000000000000000
+        TextSettings.Font.StyleExt = {00070000000000000004000000}
+        TextSettings.FontColor = claWhite
+        TextSettings.HorzAlign = Center
+        Text = 'Laat los om de PDF te openen'
+        TabOrder = 0
+      end
+    end
   end
   object OpenDialog: TOpenDialog
     DefaultExt = 'pdf'
     Left = 880
-    Top = 64
+    Top = 80
+  end
+  object SaveDialog: TSaveDialog
+    DefaultExt = 'png'
+    Options = [ofOverwritePrompt, ofHideReadOnly, ofEnableSizing]
+    Left = 960
+    Top = 80
+  end
+  object RecentMenu: TPopupMenu
+    Left = 880
+    Top = 144
+  end
+  object ZoomMenu: TPopupMenu
+    Left = 960
+    Top = 144
+    object Zoom50: TMenuItem
+      Tag = 50
+      Text = '50 %'
+      OnClick = ZoomMenuClick
+    end
+    object Zoom75: TMenuItem
+      Tag = 75
+      Text = '75 %'
+      OnClick = ZoomMenuClick
+    end
+    object Zoom100: TMenuItem
+      Tag = 100
+      Text = '100 %'
+      OnClick = ZoomMenuClick
+    end
+    object Zoom125: TMenuItem
+      Tag = 125
+      Text = '125 %'
+      OnClick = ZoomMenuClick
+    end
+    object Zoom150: TMenuItem
+      Tag = 150
+      Text = '150 %'
+      OnClick = ZoomMenuClick
+    end
+    object Zoom200: TMenuItem
+      Tag = 200
+      Text = '200 %'
+      OnClick = ZoomMenuClick
+    end
+    object Zoom300: TMenuItem
+      Tag = 300
+      Text = '300 %'
+      OnClick = ZoomMenuClick
+    end
+    object Zoom400: TMenuItem
+      Tag = 400
+      Text = '400 %'
+      OnClick = ZoomMenuClick
+    end
+    object ZoomSep: TMenuItem
+      Text = '-'
+    end
+    object ZoomFitWidthItem: TMenuItem
+      Tag = -1
+      Text = 'Breedte passend'
+      OnClick = ZoomMenuClick
+    end
+    object ZoomFitPageItem: TMenuItem
+      Tag = -2
+      Text = 'Pagina passend'
+      OnClick = ZoomMenuClick
+    end
+  end
+  object LayoutMenu: TPopupMenu
+    Left = 1040
+    Top = 144
+    object ModeContinuousItem: TMenuItem
+      Action = actModeContinuous
+      RadioItem = True
+    end
+    object ModeSingleItem: TMenuItem
+      Action = actModeSingle
+      RadioItem = True
+    end
+    object ModeFacingContinuousItem: TMenuItem
+      Action = actModeFacingContinuous
+      RadioItem = True
+    end
+    object ModeFacingItem: TMenuItem
+      Action = actModeFacing
+      RadioItem = True
+    end
+    object ModeSep: TMenuItem
+      Text = '-'
+    end
+    object CoverPageItem: TMenuItem
+      Action = actCoverPage
+    end
+  end
+  object ExportMenu: TPopupMenu
+    Left = 1120
+    Top = 144
+    object ExportPng150Item: TMenuItem
+      Action = actExportPng150
+    end
+    object ExportPng300Item: TMenuItem
+      Action = actExportPng300
+    end
+    object ExportSep: TMenuItem
+      Text = '-'
+    end
+    object CopyPageImageItem: TMenuItem
+      Action = actCopyPageImage
+    end
+    object CopyPageTextItem: TMenuItem
+      Action = actCopyPageText
+    end
+  end
+  object ActionList: TActionList
+    Left = 880
+    Top = 208
+    object actOpen: TAction
+      Category = 'Bestand'
+      Text = 'Openen...'
+      ShortCut = 16463
+      OnExecute = actOpenExecute
+    end
+    object actClose: TAction
+      Category = 'Bestand'
+      Text = 'Sluiten'
+      ShortCut = 16471
+      OnExecute = actCloseExecute
+    end
+    object actPrint: TAction
+      Category = 'Bestand'
+      Text = 'Afdrukken...'
+      ShortCut = 16464
+      OnExecute = actPrintExecute
+    end
+    object actExportPng150: TAction
+      Category = 'Bestand'
+      Text = 'Pagina opslaan als PNG (150 dpi)...'
+      ShortCut = 16453
+      OnExecute = actExportPngExecute
+    end
+    object actExportPng300: TAction
+      Category = 'Bestand'
+      Text = 'Pagina opslaan als PNG (300 dpi)...'
+      OnExecute = actExportPngExecute
+    end
+    object actCopyPageImage: TAction
+      Category = 'Bestand'
+      Text = 'Pagina als afbeelding kopi'#235'ren'
+      ShortCut = 24643
+      OnExecute = actCopyPageImageExecute
+    end
+    object actCopyPageText: TAction
+      Category = 'Bestand'
+      Text = 'Tekst van de pagina kopi'#235'ren'
+      ShortCut = 24660
+      OnExecute = actCopyPageTextExecute
+    end
+    object actProperties: TAction
+      Category = 'Bestand'
+      Text = 'Documenteigenschappen'
+      ShortCut = 16457
+      OnExecute = actPropertiesExecute
+    end
+    object actFirstPage: TAction
+      Category = 'Navigeren'
+      Text = 'Eerste pagina'
+      OnExecute = actFirstPageExecute
+    end
+    object actPrevPage: TAction
+      Category = 'Navigeren'
+      Text = 'Vorige pagina'
+      OnExecute = actPrevPageExecute
+    end
+    object actNextPage: TAction
+      Category = 'Navigeren'
+      Text = 'Volgende pagina'
+      OnExecute = actNextPageExecute
+    end
+    object actLastPage: TAction
+      Category = 'Navigeren'
+      Text = 'Laatste pagina'
+      OnExecute = actLastPageExecute
+    end
+    object actGoToPage: TAction
+      Category = 'Navigeren'
+      Text = 'Ga naar pagina...'
+      ShortCut = 16455
+      OnExecute = actGoToPageExecute
+    end
+    object actZoomIn: TAction
+      Category = 'Weergave'
+      Text = 'Inzoomen'
+      ShortCut = 16491
+      OnExecute = actZoomInExecute
+    end
+    object actZoomOut: TAction
+      Category = 'Weergave'
+      Text = 'Uitzoomen'
+      ShortCut = 16493
+      OnExecute = actZoomOutExecute
+    end
+    object actActualSize: TAction
+      Category = 'Weergave'
+      Text = 'Ware grootte'
+      ShortCut = 16433
+      OnExecute = actActualSizeExecute
+    end
+    object actFitWidth: TAction
+      Category = 'Weergave'
+      Text = 'Breedte passend'
+      ShortCut = 16432
+      OnExecute = actFitWidthExecute
+    end
+    object actFitPage: TAction
+      Category = 'Weergave'
+      Text = 'Pagina passend'
+      ShortCut = 16441
+      OnExecute = actFitPageExecute
+    end
+    object actRotateLeft: TAction
+      Category = 'Weergave'
+      Text = 'Linksom draaien'
+      ShortCut = 24658
+      OnExecute = actRotateLeftExecute
+    end
+    object actRotateRight: TAction
+      Category = 'Weergave'
+      Text = 'Rechtsom draaien'
+      ShortCut = 16466
+      OnExecute = actRotateRightExecute
+    end
+    object actModeContinuous: TAction
+      Category = 'Weergave'
+      Text = 'Doorlopend'
+      ShortCut = 24625
+      OnExecute = actModeExecute
+    end
+    object actModeSingle: TAction
+      Category = 'Weergave'
+      Text = 'Enkele pagina'
+      ShortCut = 24626
+      OnExecute = actModeExecute
+    end
+    object actModeFacingContinuous: TAction
+      Category = 'Weergave'
+      Text = 'Dubbele pagina'#39's, doorlopend'
+      ShortCut = 24627
+      OnExecute = actModeExecute
+    end
+    object actModeFacing: TAction
+      Category = 'Weergave'
+      Text = 'Dubbele pagina'#39's'
+      ShortCut = 24628
+      OnExecute = actModeExecute
+    end
+    object actCoverPage: TAction
+      Category = 'Weergave'
+      Text = 'Omslag apart tonen'
+      OnExecute = actCoverPageExecute
+    end
+    object actSidebar: TAction
+      Category = 'Weergave'
+      Text = 'Zijpaneel'
+      ShortCut = 16450
+      OnExecute = actSidebarExecute
+    end
+    object actTheme: TAction
+      Category = 'Weergave'
+      Text = 'Donker thema'
+      ShortCut = 16468
+      OnExecute = actThemeExecute
+    end
+    object actFullScreen: TAction
+      Category = 'Weergave'
+      Text = 'Volledig scherm'
+      ShortCut = 122
+      OnExecute = actFullScreenExecute
+    end
+    object actSearch: TAction
+      Category = 'Zoeken'
+      Text = 'Zoeken...'
+      ShortCut = 16454
+      OnExecute = actSearchExecute
+    end
+    object actFindNext: TAction
+      Category = 'Zoeken'
+      Text = 'Volgende resultaat'
+      ShortCut = 114
+      OnExecute = actFindNextExecute
+    end
+    object actFindPrev: TAction
+      Category = 'Zoeken'
+      Text = 'Vorige resultaat'
+      ShortCut = 8306
+      OnExecute = actFindPrevExecute
+    end
+    object actHelp: TAction
+      Category = 'Help'
+      Text = 'Sneltoetsen'
+      ShortCut = 112
+      OnExecute = actHelpExecute
+    end
   end
 end

@@ -49,6 +49,7 @@ type
     FWorker: TWorker;
     FGeneration: Integer;
     FBackground: TAlphaColor;
+    FRotation: Integer;
     FOnPageReady: TPdfPageReadyEvent;
     FOnError: TPdfRenderErrorEvent;
     FRendered: Int64;
@@ -78,6 +79,9 @@ type
     property Cache: TPdfImageCache read FCache;
     property Document: TPdfDocument read FDocument;
     property Background: TAlphaColor read FBackground write FBackground;
+    /// <summary>Extra clockwise rotation (0, 90, 180, 270) applied to every page. Set before Start; the cache is keyed
+    /// on page and scale only, so the owner clears it when the rotation changes.</summary>
+    property Rotation: Integer read FRotation write FRotation;
     /// <summary>Called on the worker thread after an image has been stored in the cache.</summary>
     property OnPageReady: TPdfPageReadyEvent read FOnPageReady write FOnPageReady;
     property OnError: TPdfRenderErrorEvent read FOnError write FOnError;
@@ -275,7 +279,7 @@ begin
     try
       try
         if (Req.Page >= 0) and (Req.Page < FDocument.PageCount) then
-          Image := FRenderer.RenderToImage(FDocument.Pages[Req.Page], Req.Scale, FBackground);
+          Image := FRenderer.RenderToImage(FDocument.Pages[Req.Page], Req.Scale, FBackground, FRotation);
       except
         on E: Exception do
         begin

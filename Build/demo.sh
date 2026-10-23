@@ -15,6 +15,9 @@ for rc in "$ROOTU"/Resources/*.rc; do
   fi
 done
 cd "$ROOTU/Demo" || exit 1
+if [ ! -f Demo.Styles.res ] || [ Demo.Styles.rc -nt Demo.Styles.res ] || [ Styles/Dark.style -nt Demo.Styles.res ]; then
+  "$BDS\\bin\\brcc32.exe" -foDemo.Styles.res Demo.Styles.rc >/dev/null || exit 1
+fi
 if [ ! -f PdfViewerDemo.res ]; then
   printf '1 RCDATA { "PdfViewerDemo" }\n' > PdfViewerDemo.rc
   "$BDS\\bin\\brcc32.exe" -foPdfViewerDemo.res PdfViewerDemo.rc >/dev/null && rm -f PdfViewerDemo.rc

@@ -1,0 +1,173 @@
+object PrintForm: TPrintForm
+  Left = 0
+  Top = 0
+  BorderStyle = Single
+  Caption = 'Afdrukken'
+  ClientHeight = 250
+  ClientWidth = 420
+  Position = MainFormCenter
+  FormFactor.Width = 320
+  FormFactor.Height = 480
+  FormFactor.Devices = [Desktop]
+  DesignerMasterStyle = 0
+  object PrinterLabel: TLabel
+    Align = Top
+    Margins.Left = 16.000000000000000000
+    Margins.Top = 14.000000000000000000
+    Margins.Right = 16.000000000000000000
+    Position.X = 16.000000000000000000
+    Position.Y = 14.000000000000000000
+    Size.Width = 388.000000000000000000
+    Size.Height = 20.000000000000000000
+    Size.PlatformDefault = False
+    Text = 'Printer'
+    TabOrder = 0
+  end
+  object PrinterCombo: TComboBox
+    Align = Top
+    Margins.Left = 16.000000000000000000
+    Margins.Top = 4.000000000000000000
+    Margins.Right = 16.000000000000000000
+    Position.X = 16.000000000000000000
+    Position.Y = 38.000000000000000000
+    Size.Width = 388.000000000000000000
+    Size.Height = 26.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 1
+  end
+  object RangeLabel: TLabel
+    Align = Top
+    Margins.Left = 16.000000000000000000
+    Margins.Top = 14.000000000000000000
+    Margins.Right = 16.000000000000000000
+    Position.X = 16.000000000000000000
+    Position.Y = 78.000000000000000000
+    Size.Width = 388.000000000000000000
+    Size.Height = 20.000000000000000000
+    Size.PlatformDefault = False
+    Text = 'Bereik'
+    TabOrder = 2
+  end
+  object AllRadio: TRadioButton
+    Align = Top
+    GroupName = 'range'
+    IsChecked = True
+    Margins.Left = 16.000000000000000000
+    Margins.Top = 4.000000000000000000
+    Margins.Right = 16.000000000000000000
+    Position.X = 16.000000000000000000
+    Position.Y = 102.000000000000000000
+    Size.Width = 388.000000000000000000
+    Size.Height = 22.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 3
+    Text = 'Alle pagina'#39's'
+  end
+  object CurrentRadio: TRadioButton
+    Align = Top
+    GroupName = 'range'
+    Margins.Left = 16.000000000000000000
+    Margins.Top = 2.000000000000000000
+    Margins.Right = 16.000000000000000000
+    Position.X = 16.000000000000000000
+    Position.Y = 126.000000000000000000
+    Size.Width = 388.000000000000000000
+    Size.Height = 22.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 4
+    Text = 'Huidige pagina'
+  end
+  object RangeLayout: TLayout
+    Align = Top
+    Margins.Left = 16.000000000000000000
+    Margins.Top = 2.000000000000000000
+    Margins.Right = 16.000000000000000000
+    Position.X = 16.000000000000000000
+    Position.Y = 150.000000000000000000
+    Size.Width = 388.000000000000000000
+    Size.Height = 26.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 5
+    object RangeRadio: TRadioButton
+      Align = Left
+      GroupName = 'range'
+      Size.Width = 110.000000000000000000
+      Size.Height = 26.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 0
+      Text = 'Pagina'#39's van'
+    end
+    object FromEdit: TEdit
+      Touch.InteractiveGestures = [LongTap, DoubleTap]
+      Align = Left
+      TabOrder = 1
+      Position.X = 114.000000000000000000
+      Margins.Left = 4.000000000000000000
+      Size.Width = 56.000000000000000000
+      Size.Height = 26.000000000000000000
+      Size.PlatformDefault = False
+      TextSettings.HorzAlign = Center
+      OnChange = RangeEditChange
+    end
+    object ToLabel: TLabel
+      Align = Left
+      Margins.Left = 8.000000000000000000
+      Position.X = 178.000000000000000000
+      Size.Width = 28.000000000000000000
+      Size.Height = 26.000000000000000000
+      Size.PlatformDefault = False
+      Text = 'tot'
+      TabOrder = 2
+    end
+    object ToEdit: TEdit
+      Touch.InteractiveGestures = [LongTap, DoubleTap]
+      Align = Left
+      TabOrder = 3
+      Position.X = 210.000000000000000000
+      Margins.Left = 4.000000000000000000
+      Size.Width = 56.000000000000000000
+      Size.Height = 26.000000000000000000
+      Size.PlatformDefault = False
+      TextSettings.HorzAlign = Center
+      OnChange = RangeEditChange
+    end
+  end
+  object ButtonLayout: TLayout
+    Align = Bottom
+    Position.Y = 202.000000000000000000
+    Size.Width = 420.000000000000000000
+    Size.Height = 48.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 6
+    object CancelButton: TButton
+      Align = Right
+      Cancel = True
+      Margins.Top = 8.000000000000000000
+      Margins.Right = 16.000000000000000000
+      Margins.Bottom = 12.000000000000000000
+      ModalResult = 2
+      Position.X = 308.000000000000000000
+      Position.Y = 8.000000000000000000
+      Size.Width = 96.000000000000000000
+      Size.Height = 28.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 1
+      Text = 'Annuleren'
+    end
+    object OkButton: TButton
+      Align = Right
+      Default = True
+      Margins.Top = 8.000000000000000000
+      Margins.Right = 8.000000000000000000
+      Margins.Bottom = 12.000000000000000000
+      ModalResult = 1
+      Position.X = 204.000000000000000000
+      Position.Y = 8.000000000000000000
+      Size.Width = 96.000000000000000000
+      Size.Height = 28.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 0
+      Text = 'Afdrukken'
+    end
+  end
+end
