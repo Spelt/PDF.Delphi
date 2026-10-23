@@ -6,7 +6,7 @@
         <FrameworkType>FMX</FrameworkType>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Release</Config>
-        <Platform Condition="'$(Platform)'==''">Win64</Platform>
+        <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>693267</TargetedPlatforms>
         <AppType>Package</AppType>
         <ProjectName Condition="'$(ProjectName)'==''">PdfViewerFMX</ProjectName>
@@ -62,12 +62,12 @@
     <PropertyGroup Condition="'$(Base)'!=''">
         <DCC_DcuOutput>..\Build\Lib\$(Platform)\$(Config)</DCC_DcuOutput>
         <DCC_ExeOutput>..\Build\Bpl\$(Platform)\$(Config)</DCC_ExeOutput>
-        <DCC_Description>TPdfViewer - FMX PDF viewer control (runtime)</DCC_Description>
+        <DCC_Description>TPdfViewer and TPdfThumbnails - FMX PDF viewer controls (runtime)</DCC_Description>
         <RuntimeOnlyPackage>true</RuntimeOnlyPackage>
         <GenDll>true</GenDll>
         <GenPackage>true</GenPackage>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
-        <DCC_UnitSearchPath>..\Source\Core;..\Source\Render;..\Source\Font;..\Source\Viewer;..\Build\Lib\$(Platform)\$(Config);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_UnitSearchPath>..\Source\Viewer;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <SanitizedProjectName>PdfViewerFMX</SanitizedProjectName>
         <DCC_E>false</DCC_E>
         <DCC_N>false</DCC_N>
@@ -117,11 +117,7 @@
         <DCCReference Include="fmx.dcp"/>
         <DCCReference Include="Skia.Package.RTL.dcp"/>
         <DCCReference Include="Skia.Package.FMX.dcp"/>
-        <DCCReference Include="PdfCore.dcp"/>
-        <DCCReference Include="PdfRenderSkia.dcp"/>
-        <DCCReference Include="..\Source\Viewer\Pdf.Viewer.Layout.pas"/>
-        <DCCReference Include="..\Source\Viewer\Pdf.Viewer.Cache.pas"/>
-        <DCCReference Include="..\Source\Viewer\Pdf.Viewer.RenderQueue.pas"/>
+        <DCCReference Include="PdfEngine.dcp"/>
         <DCCReference Include="..\Source\Viewer\FMX.PdfViewer.pas"/>
         <DCCReference Include="..\Source\Viewer\FMX.PdfThumbnails.pas"/>
         <BuildConfiguration Include="Base">

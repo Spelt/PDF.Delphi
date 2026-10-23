@@ -25,7 +25,7 @@ package PdfViewerFMX;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'TPdfViewer - FMX PDF viewer control (runtime)'}
+{$DESCRIPTION 'TPdfViewer and TPdfThumbnails - FMX PDF viewer controls (runtime)'}
 {$RUNONLY}
 {$IMPLICITBUILD ON}
 
@@ -34,13 +34,9 @@ requires
   fmx,
   Skia.Package.RTL,
   Skia.Package.FMX,
-  PdfCore,
-  PdfRenderSkia;
+  PdfEngine;
 
 contains
-  Pdf.Viewer.Layout in '..\Source\Viewer\Pdf.Viewer.Layout.pas',
-  Pdf.Viewer.Cache in '..\Source\Viewer\Pdf.Viewer.Cache.pas',
-  Pdf.Viewer.RenderQueue in '..\Source\Viewer\Pdf.Viewer.RenderQueue.pas',
   FMX.PdfViewer in '..\Source\Viewer\FMX.PdfViewer.pas',
   FMX.PdfThumbnails in '..\Source\Viewer\FMX.PdfThumbnails.pas';
 

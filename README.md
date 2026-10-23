@@ -12,8 +12,8 @@ images, shadings (including meshes) and patterns; text with embedded TrueType,
 CFF and Type1 fonts parsed by the library itself and drawn as outlines, plus
 substitutes for the standard 14 fonts; CCITT, JBIG2 and JPEG 2000 decoders;
 annotations, links, bookmarks, soft masks; text extraction, search and
-selection; and `TPdfViewer`, an FMX control with background rendering and a
-page cache.
+selection; and `TPdfViewer`, a viewer control with background rendering and
+a page cache, for FMX and for the VCL.
 
 Not covered yet, on purpose: ICC colour management (ICCBased falls back to
 the component count), knockout groups, transfer functions (`/TR`), JPEG 2000
@@ -22,17 +22,22 @@ non-embedded CID fonts without a ToUnicode map.
 
 ## Requirements
 
-- Delphi 13.1 (Studio 37.0) with the bundled Skia (`System.Skia`, `FMX.Skia`).
-  `Pdf.Core` and `Pdf.Font` use only the RTL and compile for every platform;
-  `Pdf.Render` adds `System.Skia`; only `FMX.PdfViewer` depends on FMX.
+- Delphi 13.1 (Studio 37.0) with the bundled Skia (`System.Skia`, `FMX.Skia`,
+  `Vcl.Skia`). `Pdf.Core` and `Pdf.Font` use only the RTL and compile for
+  every platform; `Pdf.Render` and the framework-independent viewer logic
+  (`Pdf.Viewer.*`) add `System.Skia`; only `FMX.Pdf*` depends on FMX and only
+  `Vcl.Pdf*` on the VCL.
+- Packages: `PdfEngine` (parser, fonts, renderer and viewer logic; RTL and
+  Skia only), `PdfViewerFMX` and `PdfViewerVCL` (the controls, both on top of
+  `PdfEngine`), and the design-time packages `PdfViewerFMXDsgn` and
+  `PdfViewerVCLDsgn`. Both design-time packages can be installed side by side.
 - Tests: DUnitX as shipped with Delphi (`$(BDS)\source\DUnitX`).
 
 ## Building and testing
 
-From the IDE: open `Packages\PdfDelphi.groupproj`, or the individual
-projects `Packages\PdfCore.dproj`, `Packages\PdfRenderSkia.dproj`,
-`Packages\PdfViewerFMX.dproj`, `Packages\PdfViewerFMXDsgn.dproj`,
-`Tests\Pdf.Tests.dproj` and `Demo\PdfViewerDemo.dproj`.
+From the IDE: open `Packages\PdfDelphi.groupproj` (the five packages), or
+the individual projects `Tests\Pdf.Tests.dproj`, `Demo\PdfViewerDemo.dproj`
+(FMX) and `DemoVCL\PdfViewerVclDemo.dproj` (VCL).
 
 From the command line (Git Bash, Win64). The script compiles
 `Resources/*.rc` to `.res` with `brcc32` first; the test executable needs
@@ -113,9 +118,9 @@ outline, annotations) in `Pdf.Core.Navigation` (`TPdfNavigation`).
 
 ## Viewer component
 
-Install `Packages\PdfViewerFMXDsgn.dproj` (after `PdfCore`, `PdfRenderSkia`
-and `PdfViewerFMX`) to get a `TPdfViewer` on the "PDF" palette page, or create
-one in code:
+Build `PdfEngine` and `PdfViewerFMX`, then install
+`Packages\PdfViewerFMXDsgn.dproj` to get `TPdfViewer` and `TPdfThumbnails` on
+the "PDF" palette page, or create the viewer in code:
 
 ```pascal
 uses FMX.PdfViewer;
@@ -164,6 +169,25 @@ Further viewer features:
   horizontally), drag pans, pinch and double-tap zoom on touch devices,
   keyboard navigation with the arrow, page and home/end keys, `+`/`-`/`0`.
 
+### VCL
+
+`Vcl.PdfViewer` and `Vcl.PdfThumbnails` offer the same `TPdfViewer` and
+`TPdfThumbnails` for VCL applications, with the same properties, methods and
+events; install `Packages\PdfViewerVCLDsgn.dproj` (after `PdfEngine` and
+`PdfViewerVCL`) for the palette. They are windowed controls drawn with
+`Vcl.Skia` and use native scroll bars. Coordinates in the API (`ZoomAt`,
+`PageAtPoint`, `PointToPage`) are logical pixels, i.e. client pixels divided
+by `ScaleFactor`; give the application a PerMonitorV2 manifest so pages are
+rendered at the monitor's resolution. Pinch zoom works on touch screens;
+double-tap zoom is FMX only.
+
+Both frameworks share `TPdfViewerController` (`Pdf.Viewer.Controller`) and
+`TPdfThumbnailsController`: all behaviour (layout, zoom, scrolling, selection,
+search, links, drawing on an `ISkCanvas`) lives there, and the controls only
+forward input and paint requests through `IPdfControlHost`. The shared API is
+declared once in `Pdf.Viewer.ApiDecl.inc`/`Pdf.Viewer.ApiImpl.inc`; viewer
+types such as `TPdfDisplayMode` are re-exported by both control units.
+
 ## Demo
 
 `Demo\PdfViewerDemo.dproj` is a complete viewer built on the two controls,
@@ -174,3 +198,9 @@ the `Dark.style` that ships with Delphi, embedded as a resource), drag and
 drop, recent files, rotation and page-layout modes, PNG export, clipboard
 (page image and text), printing, a password prompt and a keyboard-shortcut
 overlay (F1). Settings persist in `%APPDATA%\PdfViewerDemo\settings.ini`.
+
+`DemoVCL\PdfViewerVclDemo.dproj` is a small VCL counterpart: a toolbar
+(open, page navigation, zoom, fit width/page, rotate, search), a thumbnail
+strip and the viewer, placed at design time (install `PdfViewerVCLDsgn`
+first). Files open from the button, Ctrl+O, drag and drop or the command
+line.

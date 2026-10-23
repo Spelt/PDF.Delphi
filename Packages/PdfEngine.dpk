@@ -1,4 +1,4 @@
-package PdfRenderSkia;
+package PdfEngine;
 
 {$R *.res}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
@@ -25,16 +25,25 @@ package PdfRenderSkia;
 {$IMAGEBASE $400000}
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
-{$DESCRIPTION 'Pdf.Render.Skia - renders Pdf.Core pages to an ISkCanvas (no FMX)'}
+{$DESCRIPTION 'Pdf.Engine - PDF parser, Skia renderer and framework-independent viewer logic (runtime)'}
 {$RUNONLY}
 {$IMPLICITBUILD ON}
 
 requires
   rtl,
-  Skia.Package.RTL,
-  PdfCore;
+  Skia.Package.RTL;
 
 contains
+  Pdf.Core.Types in '..\Source\Core\Pdf.Core.Types.pas',
+  Pdf.Core.Lexer in '..\Source\Core\Pdf.Core.Lexer.pas',
+  Pdf.Core.Objects in '..\Source\Core\Pdf.Core.Objects.pas',
+  Pdf.Core.Parser in '..\Source\Core\Pdf.Core.Parser.pas',
+  Pdf.Core.Filters in '..\Source\Core\Pdf.Core.Filters.pas',
+  Pdf.Core.Crypto in '..\Source\Core\Pdf.Core.Crypto.pas',
+  Pdf.Core.Encryption in '..\Source\Core\Pdf.Core.Encryption.pas',
+  Pdf.Core.XRef in '..\Source\Core\Pdf.Core.XRef.pas',
+  Pdf.Core.Document in '..\Source\Core\Pdf.Core.Document.pas',
+  Pdf.Core.Navigation in '..\Source\Core\Pdf.Core.Navigation.pas',
   Pdf.Render.Functions in '..\Source\Render\Pdf.Render.Functions.pas',
   Pdf.Render.ColorSpaces in '..\Source\Render\Pdf.Render.ColorSpaces.pas',
   Pdf.Render.Content in '..\Source\Render\Pdf.Render.Content.pas',
@@ -57,6 +66,11 @@ contains
   Pdf.Codec.JPX.Primitives in '..\Source\Render\Pdf.Codec.JPX.Primitives.pas',
   Pdf.Codec.JPX in '..\Source\Render\Pdf.Codec.JPX.pas',
   Pdf.Render.Skia in '..\Source\Render\Pdf.Render.Skia.pas',
-  Pdf.Render.Text in '..\Source\Render\Pdf.Render.Text.pas';
+  Pdf.Render.Text in '..\Source\Render\Pdf.Render.Text.pas',
+  Pdf.Viewer.Layout in '..\Source\Viewer\Pdf.Viewer.Layout.pas',
+  Pdf.Viewer.Cache in '..\Source\Viewer\Pdf.Viewer.Cache.pas',
+  Pdf.Viewer.RenderQueue in '..\Source\Viewer\Pdf.Viewer.RenderQueue.pas',
+  Pdf.Viewer.Controller in '..\Source\Viewer\Pdf.Viewer.Controller.pas',
+  Pdf.Viewer.ThumbnailsController in '..\Source\Viewer\Pdf.Viewer.ThumbnailsController.pas';
 
 end.

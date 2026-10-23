@@ -1,8 +1,8 @@
 {*******************************************************************************
-  Pdf.Viewer.Register
-  Design-time registration of TPdfViewer and TPdfThumbnails (package PdfViewerFMXDsgn).
+  Vcl.PdfViewer.Register
+  Design-time registration of TPdfViewer and TPdfThumbnails (package PdfViewerVCLDsgn).
 *******************************************************************************}
-unit Pdf.Viewer.Register;
+unit Vcl.PdfViewer.Register;
 
 interface
 
@@ -11,7 +11,7 @@ procedure Register;
 implementation
 
 uses
-  System.Classes, FMX.PdfViewer, FMX.PdfThumbnails;
+  System.Classes, Vcl.PdfViewer, Vcl.PdfThumbnails;
 
 procedure Register;
 begin

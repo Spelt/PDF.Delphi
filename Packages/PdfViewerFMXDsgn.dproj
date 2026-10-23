@@ -168,7 +168,7 @@
         <DCCReference Include="fmx.dcp"/>
         <DCCReference Include="designide.dcp"/>
         <DCCReference Include="PdfViewerFMX.dcp"/>
-        <DCCReference Include="..\Source\Viewer\Pdf.Viewer.Register.pas"/>
+        <DCCReference Include="..\Source\Viewer\FMX.PdfViewer.Register.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

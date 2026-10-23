@@ -1,15 +1,15 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
-        <ProjectGuid>{B4C1D9E7-2F58-4A36-8C71-5E9F0A1B2C03}</ProjectGuid>
-        <MainSource>PdfRenderSkia.dpk</MainSource>
+        <ProjectGuid>{2CF22D95-09A9-487C-ADF8-8EB7A7474FD3}</ProjectGuid>
+        <MainSource>PdfEngine.dpk</MainSource>
         <ProjectVersion>20.4</ProjectVersion>
         <FrameworkType>None</FrameworkType>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Release</Config>
-        <Platform Condition="'$(Platform)'==''">Win64</Platform>
+        <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>693267</TargetedPlatforms>
         <AppType>Package</AppType>
-        <ProjectName Condition="'$(ProjectName)'==''">PdfRenderSkia</ProjectName>
+        <ProjectName Condition="'$(ProjectName)'==''">PdfEngine</ProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
         <Base>true</Base>
@@ -62,14 +62,14 @@
     <PropertyGroup Condition="'$(Base)'!=''">
         <DCC_DcuOutput>..\Build\Lib\$(Platform)\$(Config)</DCC_DcuOutput>
         <DCC_ExeOutput>..\Build\Bpl\$(Platform)\$(Config)</DCC_ExeOutput>
-        <DCC_Description>Pdf.Render.Skia - renders Pdf.Core pages to an ISkCanvas (no FMX)</DCC_Description>
+        <DCC_Description>Pdf.Engine - PDF parser, Skia renderer and framework-independent viewer logic (runtime)</DCC_Description>
         <RuntimeOnlyPackage>true</RuntimeOnlyPackage>
         <GenDll>true</GenDll>
         <GenPackage>true</GenPackage>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
         <DCC_ResourcePath>..\Resources;$(DCC_ResourcePath)</DCC_ResourcePath>
-        <DCC_UnitSearchPath>..\Source\Core;..\Source\Render;..\Source\Font;..\Build\Lib\$(Platform)\$(Config);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-        <SanitizedProjectName>PdfRenderSkia</SanitizedProjectName>
+        <DCC_UnitSearchPath>..\Source\Core;..\Source\Render;..\Source\Font;..\Source\Viewer;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <SanitizedProjectName>PdfEngine</SanitizedProjectName>
         <DCC_E>false</DCC_E>
         <DCC_N>false</DCC_N>
         <DCC_S>false</DCC_S>
@@ -116,7 +116,16 @@
         </DelphiCompile>
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="Skia.Package.RTL.dcp"/>
-        <DCCReference Include="PdfCore.dcp"/>
+        <DCCReference Include="..\Source\Core\Pdf.Core.Types.pas"/>
+        <DCCReference Include="..\Source\Core\Pdf.Core.Lexer.pas"/>
+        <DCCReference Include="..\Source\Core\Pdf.Core.Objects.pas"/>
+        <DCCReference Include="..\Source\Core\Pdf.Core.Parser.pas"/>
+        <DCCReference Include="..\Source\Core\Pdf.Core.Filters.pas"/>
+        <DCCReference Include="..\Source\Core\Pdf.Core.Crypto.pas"/>
+        <DCCReference Include="..\Source\Core\Pdf.Core.Encryption.pas"/>
+        <DCCReference Include="..\Source\Core\Pdf.Core.XRef.pas"/>
+        <DCCReference Include="..\Source\Core\Pdf.Core.Document.pas"/>
+        <DCCReference Include="..\Source\Core\Pdf.Core.Navigation.pas"/>
         <DCCReference Include="..\Source\Render\Pdf.Render.Functions.pas"/>
         <DCCReference Include="..\Source\Render\Pdf.Render.ColorSpaces.pas"/>
         <DCCReference Include="..\Source\Render\Pdf.Render.Content.pas"/>
@@ -140,6 +149,11 @@
         <DCCReference Include="..\Source\Render\Pdf.Codec.JPX.pas"/>
         <DCCReference Include="..\Source\Render\Pdf.Render.Skia.pas"/>
         <DCCReference Include="..\Source\Render\Pdf.Render.Text.pas"/>
+        <DCCReference Include="..\Source\Viewer\Pdf.Viewer.Layout.pas"/>
+        <DCCReference Include="..\Source\Viewer\Pdf.Viewer.Cache.pas"/>
+        <DCCReference Include="..\Source\Viewer\Pdf.Viewer.RenderQueue.pas"/>
+        <DCCReference Include="..\Source\Viewer\Pdf.Viewer.Controller.pas"/>
+        <DCCReference Include="..\Source\Viewer\Pdf.Viewer.ThumbnailsController.pas"/>
         <RcCompile Include="..\Resources\PdfFonts.rc">
             <Form>PdfFonts.res</Form>
         </RcCompile>
@@ -164,7 +178,7 @@
         <BorlandProject>
             <Delphi.Personality>
                 <Source>
-                    <Source Name="MainSource">PdfRenderSkia.dpk</Source>
+                    <Source Name="MainSource">PdfEngine.dpk</Source>
                 </Source>
             </Delphi.Personality>
             <Platforms>

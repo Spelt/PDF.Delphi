@@ -6,6 +6,8 @@
   out of the viewer's page cache; while a thumbnail is pending the nearest
   cached rendition is shown scaled. Clicking a thumbnail navigates the
   viewer; the strip follows the viewer's current page, document, and rotation.
+  The behaviour lives in TPdfThumbnailsController, shared with the VCL
+  TPdfThumbnails (Vcl.PdfThumbnails).
 *******************************************************************************}
 unit FMX.PdfThumbnails;
 
@@ -13,56 +15,45 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.Types, System.UITypes, System.Math, System.Skia,
-  FMX.Types, FMX.Controls, FMX.Graphics, FMX.StdCtrls, FMX.Skia, FMX.PdfViewer;
+  FMX.Types, FMX.Controls, FMX.Graphics, FMX.StdCtrls, FMX.Skia,
+  Pdf.Viewer.Controller, Pdf.Viewer.ThumbnailsController, FMX.PdfViewer;
 
 type
   [ComponentPlatformsAttribute(pidAllPlatforms)]
-  TPdfThumbnails = class(TSkCustomControl)
+  TPdfThumbnails = class(TSkCustomControl, IPdfControlHost)
   private const
-    DefaultThumbnailWidth = 120;
-    DefaultSpacing = 14;
-    DefaultInset = 12;
-    NumberHeight = 18;
-    WheelStep = 60;
+    ScrollBarWidth = 14;
   private
+    FController: TPdfThumbnailsController;
     FViewer: TPdfViewer;
     FScroll: TScrollBar;
-    FScrollY: Double;
-    FThumbnailWidth: Single;
-    FSpacing: Single;
-    FInset: Single;
-    FBackgroundColor: TAlphaColor;
-    FSelectedColor: TAlphaColor;
-    FTextColor: TAlphaColor;
-    FShowPageNumbers: Boolean;
-    FUpdatingScroll: Boolean;
-    FPressedPage: Integer;
-    FFont: ISkFont;
-    FOnPageClick: TPdfPageChangeEvent;
     procedure SetViewer(const Value: TPdfViewer);
+    function GetScrollY: Double;
+    function GetThumbnailWidth: Single;
     procedure SetThumbnailWidth(const Value: Single);
+    function GetSpacing: Single;
     procedure SetSpacing(const Value: Single);
+    function GetInset: Single;
     procedure SetInset(const Value: Single);
+    function GetBackgroundColor: TAlphaColor;
     procedure SetBackgroundColor(const Value: TAlphaColor);
+    function GetSelectedColor: TAlphaColor;
     procedure SetSelectedColor(const Value: TAlphaColor);
+    function GetTextColor: TAlphaColor;
     procedure SetTextColor(const Value: TAlphaColor);
+    function GetShowPageNumbers: Boolean;
     procedure SetShowPageNumbers(const Value: Boolean);
-    procedure ViewerChanged(Sender: TObject; Change: TPdfViewerChange);
+    function GetOnPageClick: TPdfPageChangeEvent;
+    procedure SetOnPageClick(const Value: TPdfPageChangeEvent);
     procedure ScrollChanged(Sender: TObject);
-    function PageCount: Integer;
-    function SceneScale: Single;
-    /// <summary>Thumbnail image height in logical pixels for a page (width is ThumbnailWidth).</summary>
-    function ThumbHeight(Index: Integer): Single;
-    function ItemHeight(Index: Integer): Single;
-    function ItemTop(Index: Integer): Single;
-    function ContentHeight: Single;
-    function ViewportWidth: Single;
-    /// <summary>Device pixels per point that make the page ThumbnailWidth logical pixels wide.</summary>
-    function RenderScale(Index: Integer): Double;
-    function PageAtY(Y: Single): Integer;
-    procedure UpdateScrollBar;
-    procedure SetScrollY(Value: Double);
-    procedure Layout;
+    { IPdfControlHost }
+    procedure InvalidateHost;
+    function HostSize: TSizeF;
+    function HostDeviceScale: Single;
+    function HostScrollBarSize: Single;
+    procedure SyncScrollBars(const Vertical, Horizontal: TPdfScrollBarState);
+    procedure SetHostCursor(Cursor: TCursor);
+    function CopyTextToClipboard(const Text: string): Boolean;
   protected
     procedure Draw(const ACanvas: ISkCanvas; const ADest: TRectF; const AOpacity: Single); override;
     procedure Resize; override;
@@ -76,7 +67,7 @@ type
     destructor Destroy; override;
     /// <summary>Scrolls so that the thumbnail of a page is visible (centred when it was outside the view).</summary>
     procedure EnsureVisible(Index: Integer);
-    property ScrollY: Double read FScrollY;
+    property ScrollY: Double read GetScrollY;
   published
     property Align;
     property Anchors;
@@ -112,17 +103,17 @@ type
     /// <summary>The viewer whose pages are shown and navigated.</summary>
     property Viewer: TPdfViewer read FViewer write SetViewer;
     /// <summary>Width of a thumbnail in logical pixels.</summary>
-    property ThumbnailWidth: Single read FThumbnailWidth write SetThumbnailWidth;
+    property ThumbnailWidth: Single read GetThumbnailWidth write SetThumbnailWidth;
     /// <summary>Vertical space between thumbnails.</summary>
-    property Spacing: Single read FSpacing write SetSpacing;
+    property Spacing: Single read GetSpacing write SetSpacing;
     /// <summary>Space around the strip.</summary>
-    property Inset: Single read FInset write SetInset;
-    property BackgroundColor: TAlphaColor read FBackgroundColor write SetBackgroundColor default $FF3C3C3C;
-    property SelectedColor: TAlphaColor read FSelectedColor write SetSelectedColor default $FF3D8BFF;
-    property TextColor: TAlphaColor read FTextColor write SetTextColor default $FFE0E0E0;
-    property ShowPageNumbers: Boolean read FShowPageNumbers write SetShowPageNumbers default True;
+    property Inset: Single read GetInset write SetInset;
+    property BackgroundColor: TAlphaColor read GetBackgroundColor write SetBackgroundColor default $FF3C3C3C;
+    property SelectedColor: TAlphaColor read GetSelectedColor write SetSelectedColor default $FF3D8BFF;
+    property TextColor: TAlphaColor read GetTextColor write SetTextColor default $FFE0E0E0;
+    property ShowPageNumbers: Boolean read GetShowPageNumbers write SetShowPageNumbers default True;
     /// <summary>A thumbnail was clicked (after the viewer has navigated to it).</summary>
-    property OnPageClick: TPdfPageChangeEvent read FOnPageClick write FOnPageClick;
+    property OnPageClick: TPdfPageChangeEvent read GetOnPageClick write SetOnPageClick;
   end;
 
 implementation
@@ -132,14 +123,15 @@ implementation
 constructor TPdfThumbnails.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FThumbnailWidth := DefaultThumbnailWidth;
-  FSpacing := DefaultSpacing;
-  FInset := DefaultInset;
-  FBackgroundColor := $FF3C3C3C;
-  FSelectedColor := $FF3D8BFF;
-  FTextColor := $FFE0E0E0;
-  FShowPageNumbers := True;
-  FPressedPage := -1;
+  FScroll := TScrollBar.Create(Self);
+  FScroll.Parent := Self;
+  FScroll.Stored := False;
+  FScroll.Orientation := TOrientation.Vertical;
+  FScroll.Align := TAlignLayout.Right;
+  FScroll.Width := ScrollBarWidth;
+  FScroll.Visible := False;
+  FScroll.OnChange := ScrollChanged;
+  FController := TPdfThumbnailsController.Create(Self, Self);
   HitTest := True;
   CanFocus := True;
   TabStop := True;
@@ -147,20 +139,11 @@ begin
   ClipChildren := True;
   DrawCacheKind := TSkDrawCacheKind.Never;
   SetBounds(0, 0, 160, 300);
-  FScroll := TScrollBar.Create(Self);
-  FScroll.Parent := Self;
-  FScroll.Stored := False;
-  FScroll.Orientation := TOrientation.Vertical;
-  FScroll.Align := TAlignLayout.Right;
-  FScroll.Width := 14;
-  FScroll.Visible := False;
-  FScroll.OnChange := ScrollChanged;
 end;
 
 destructor TPdfThumbnails.Destroy;
 begin
-  if FViewer <> nil then
-    FViewer.RemoveChangeListener(ViewerChanged);
+  FreeAndNil(FController);
   inherited;
 end;
 
@@ -170,7 +153,8 @@ begin
   if (Operation = opRemove) and (AComponent = FViewer) then
   begin
     FViewer := nil;
-    Layout;
+    if FController <> nil then
+      FController.ViewerFreed;
   end;
 end;
 
@@ -179,361 +163,187 @@ begin
   if Value = FViewer then
     Exit;
   if FViewer <> nil then
-  begin
-    FViewer.RemoveChangeListener(ViewerChanged);
     FViewer.RemoveFreeNotification(Self);
-  end;
   FViewer := Value;
   if FViewer <> nil then
   begin
     FViewer.FreeNotification(Self);
-    FViewer.AddChangeListener(ViewerChanged);
-  end;
-  FScrollY := 0;
-  Layout;
+    FController.Viewer := FViewer.Controller;
+  end
+  else
+    FController.Viewer := nil;
+end;
+
+function TPdfThumbnails.GetScrollY: Double;
+begin
+  Result := FController.ScrollY;
+end;
+
+function TPdfThumbnails.GetThumbnailWidth: Single;
+begin
+  Result := FController.ThumbnailWidth;
 end;
 
 procedure TPdfThumbnails.SetThumbnailWidth(const Value: Single);
 begin
-  FThumbnailWidth := Max(24, Value);
-  Layout;
+  FController.ThumbnailWidth := Value;
+end;
+
+function TPdfThumbnails.GetSpacing: Single;
+begin
+  Result := FController.Spacing;
 end;
 
 procedure TPdfThumbnails.SetSpacing(const Value: Single);
 begin
-  FSpacing := Max(0, Value);
-  Layout;
+  FController.Spacing := Value;
+end;
+
+function TPdfThumbnails.GetInset: Single;
+begin
+  Result := FController.Inset;
 end;
 
 procedure TPdfThumbnails.SetInset(const Value: Single);
 begin
-  FInset := Max(0, Value);
-  Layout;
+  FController.Inset := Value;
+end;
+
+function TPdfThumbnails.GetBackgroundColor: TAlphaColor;
+begin
+  Result := FController.BackgroundColor;
 end;
 
 procedure TPdfThumbnails.SetBackgroundColor(const Value: TAlphaColor);
 begin
-  FBackgroundColor := Value;
-  Redraw;
+  FController.BackgroundColor := Value;
+end;
+
+function TPdfThumbnails.GetSelectedColor: TAlphaColor;
+begin
+  Result := FController.SelectedColor;
 end;
 
 procedure TPdfThumbnails.SetSelectedColor(const Value: TAlphaColor);
 begin
-  FSelectedColor := Value;
-  Redraw;
+  FController.SelectedColor := Value;
+end;
+
+function TPdfThumbnails.GetTextColor: TAlphaColor;
+begin
+  Result := FController.TextColor;
 end;
 
 procedure TPdfThumbnails.SetTextColor(const Value: TAlphaColor);
 begin
-  FTextColor := Value;
-  Redraw;
+  FController.TextColor := Value;
+end;
+
+function TPdfThumbnails.GetShowPageNumbers: Boolean;
+begin
+  Result := FController.ShowPageNumbers;
 end;
 
 procedure TPdfThumbnails.SetShowPageNumbers(const Value: Boolean);
 begin
-  FShowPageNumbers := Value;
-  Layout;
+  FController.ShowPageNumbers := Value;
 end;
 
-{ Geometry }
-
-function TPdfThumbnails.PageCount: Integer;
+function TPdfThumbnails.GetOnPageClick: TPdfPageChangeEvent;
 begin
-  if FViewer <> nil then
-    Result := FViewer.PageCount
-  else
-    Result := 0;
+  Result := FController.OnPageClick;
 end;
 
-function TPdfThumbnails.SceneScale: Single;
+procedure TPdfThumbnails.SetOnPageClick(const Value: TPdfPageChangeEvent);
+begin
+  FController.OnPageClick := Value;
+end;
+
+procedure TPdfThumbnails.EnsureVisible(Index: Integer);
+begin
+  FController.EnsureVisible(Index);
+end;
+
+{ IPdfControlHost }
+
+procedure TPdfThumbnails.InvalidateHost;
+begin
+  if not (csDestroying in ComponentState) then
+    Redraw;
+end;
+
+function TPdfThumbnails.HostSize: TSizeF;
+begin
+  Result := TSizeF.Create(Width, Height);
+end;
+
+function TPdfThumbnails.HostDeviceScale: Single;
 begin
   Result := 1;
   if Scene <> nil then
     Result := Scene.GetSceneScale;
-  if Result <= 0 then
-    Result := 1;
 end;
 
-function TPdfThumbnails.ThumbHeight(Index: Integer): Single;
-var
-  S: TSizeF;
+function TPdfThumbnails.HostScrollBarSize: Single;
 begin
-  S := FViewer.PageSize(Index);
-  if S.Width <= 0 then
-    Exit(FThumbnailWidth * 1.4142);
-  Result := FThumbnailWidth * S.Height / S.Width;
+  Result := ScrollBarWidth;
 end;
 
-function TPdfThumbnails.ItemHeight(Index: Integer): Single;
+procedure TPdfThumbnails.SyncScrollBars(const Vertical, Horizontal: TPdfScrollBarState);
 begin
-  Result := ThumbHeight(Index);
-  if FShowPageNumbers then
-    Result := Result + NumberHeight;
-end;
-
-function TPdfThumbnails.ItemTop(Index: Integer): Single;
-var
-  I: Integer;
-begin
-  // Pages mostly share one size; the running sum is cheap for the counts a strip shows
-  Result := FInset;
-  for I := 0 to Index - 1 do
-    Result := Result + ItemHeight(I) + FSpacing;
-end;
-
-function TPdfThumbnails.ContentHeight: Single;
-var
-  N: Integer;
-begin
-  N := PageCount;
-  if N = 0 then
-    Exit(0);
-  Result := ItemTop(N - 1) + ItemHeight(N - 1) + FInset;
-end;
-
-function TPdfThumbnails.ViewportWidth: Single;
-begin
-  Result := Width;
-  if (FScroll <> nil) and FScroll.Visible then
-    Result := Result - FScroll.Width;
-end;
-
-function TPdfThumbnails.RenderScale(Index: Integer): Double;
-var
-  S: TSizeF;
-begin
-  S := FViewer.PageSize(Index);
-  if S.Width <= 0 then
-    Exit(0.2 * SceneScale);
-  Result := FThumbnailWidth * SceneScale / S.Width;
-end;
-
-function TPdfThumbnails.PageAtY(Y: Single): Integer;
-var
-  I: Integer;
-  Top: Single;
-begin
-  Top := FInset;
-  Y := Y + FScrollY;
-  for I := 0 to PageCount - 1 do
-  begin
-    if (Y >= Top) and (Y < Top + ItemHeight(I)) then
-      Exit(I);
-    Top := Top + ItemHeight(I) + FSpacing;
-    if Top > Y then
-      Break;
-  end;
-  Result := -1;
-end;
-
-procedure TPdfThumbnails.UpdateScrollBar;
-var
-  CH: Single;
-begin
-  if (FScroll = nil) or FUpdatingScroll then
+  if FScroll = nil then
     Exit;
-  FUpdatingScroll := True;
-  try
-    CH := ContentHeight;
-    FScroll.Visible := CH > Height + 0.5;
-    FScrollY := EnsureRange(FScrollY, 0, Max(0, CH - Height));
-    if FScroll.Visible then
-    begin
-      FScroll.Max := CH;
-      FScroll.ViewportSize := Height;
-      FScroll.SmallChange := WheelStep;
-      FScroll.Value := FScrollY;
-    end;
-  finally
-    FUpdatingScroll := False;
+  FScroll.Visible := Vertical.Visible;
+  if Vertical.Visible then
+  begin
+    FScroll.Max := Vertical.Max;
+    FScroll.ViewportSize := Vertical.ViewportSize;
+    FScroll.SmallChange := Vertical.SmallChange;
+    FScroll.Value := Vertical.Value;
   end;
 end;
 
-procedure TPdfThumbnails.SetScrollY(Value: Double);
+procedure TPdfThumbnails.SetHostCursor(Cursor: TCursor);
 begin
-  Value := EnsureRange(Value, 0, Max(0, ContentHeight - Height));
-  if SameValue(Value, FScrollY, 0.01) then
-    Exit;
-  FScrollY := Value;
-  if (FScroll <> nil) and FScroll.Visible and not FUpdatingScroll then
-  begin
-    FUpdatingScroll := True;
-    try
-      FScroll.Value := FScrollY;
-    finally
-      FUpdatingScroll := False;
-    end;
-  end;
-  Redraw;
+  Self.Cursor := Cursor;
+end;
+
+function TPdfThumbnails.CopyTextToClipboard(const Text: string): Boolean;
+begin
+  Result := False;
 end;
 
 procedure TPdfThumbnails.ScrollChanged(Sender: TObject);
 begin
-  if not FUpdatingScroll then
-    SetScrollY(FScroll.Value);
+  FController.ScrollBarMoved(FScroll.Value);
 end;
 
-procedure TPdfThumbnails.Layout;
+{ Drawing and input }
+
+procedure TPdfThumbnails.Draw(const ACanvas: ISkCanvas; const ADest: TRectF; const AOpacity: Single);
 begin
-  UpdateScrollBar;
-  Redraw;
+  FController.Draw(ACanvas, ADest);
 end;
 
 procedure TPdfThumbnails.Resize;
 begin
   inherited;
-  if FScroll <> nil then
-    Layout;
+  if FController <> nil then
+    FController.Resized;
 end;
-
-procedure TPdfThumbnails.EnsureVisible(Index: Integer);
-var
-  Top, H: Single;
-begin
-  if (Index < 0) or (Index >= PageCount) then
-    Exit;
-  Top := ItemTop(Index);
-  H := ItemHeight(Index);
-  if Top < FScrollY then
-    SetScrollY(Top - FInset)
-  else if Top + H > FScrollY + Height then
-    SetScrollY(Top + H + FInset - Height);
-end;
-
-procedure TPdfThumbnails.ViewerChanged(Sender: TObject; Change: TPdfViewerChange);
-begin
-  case Change of
-    vcDocument:
-      begin
-        FScrollY := 0;
-        Layout;
-      end;
-    vcRotation:
-      Layout;
-    vcPage:
-      begin
-        if FViewer <> nil then
-          EnsureVisible(FViewer.CurrentPage);
-        Redraw;
-      end;
-    vcPageImage:
-      Redraw;
-  end;
-end;
-
-{ Drawing }
-
-procedure TPdfThumbnails.Draw(const ACanvas: ISkCanvas; const ADest: TRectF; const AOpacity: Single);
-var
-  Paint: ISkPaint;
-  I, N, Current: Integer;
-  Top, H, X, W, VW: Single;
-  R, Frame: TRectF;
-  Img: ISkImage;
-  Scale, ImgScale: Double;
-  Sampling: TSkSamplingOptions;
-  S: string;
-  Pending: Integer;
-begin
-  Paint := TSkPaint.Create(TSkPaintStyle.Fill);
-  Paint.AntiAlias := True;
-  Paint.Color := FBackgroundColor;
-  ACanvas.DrawRect(ADest, Paint);
-  N := PageCount;
-  if (N = 0) or (FViewer = nil) then
-    Exit;
-  if FFont = nil then
-    FFont := TSkFont.Create(TSkTypeface.MakeDefault, 11);
-  VW := ViewportWidth;
-  W := FThumbnailWidth;
-  X := ADest.Left + Max(FInset, (VW - W) / 2);
-  Current := FViewer.CurrentPage;
-  Top := FInset;
-  Pending := 0;
-  ACanvas.Save;
-  try
-    ACanvas.ClipRect(TRectF.Create(ADest.Left, ADest.Top, ADest.Left + VW, ADest.Bottom));
-    for I := 0 to N - 1 do
-    begin
-      H := ThumbHeight(I);
-      if Top - FScrollY > Height then
-        Break;
-      if Top + ItemHeight(I) - FScrollY >= 0 then
-      begin
-        R := TRectF.Create(X, ADest.Top + Top - FScrollY, X + W, ADest.Top + Top - FScrollY + H);
-        if I = Current then
-        begin
-          Frame := R;
-          Frame.Inflate(4, 4);
-          Paint.Color := FSelectedColor;
-          ACanvas.DrawRoundRect(Frame, 3, 3, Paint);
-        end
-        else
-        begin
-          Frame := R;
-          Frame.Offset(1.5, 1.5);
-          Paint.Color := $50000000;
-          ACanvas.DrawRect(Frame, Paint);
-        end;
-        Paint.Color := TAlphaColorRec.White;
-        ACanvas.DrawRect(R, Paint);
-        Scale := RenderScale(I);
-        if FViewer.TryGetPageImage(I, Scale, Img) then
-          Sampling := TSkSamplingOptions.Create(TSkFilterMode.Linear, TSkMipmapMode.None)
-        else
-        begin
-          // Ask for the thumbnail (nearest to the viewport first) and show whatever is cached meanwhile
-          if Pending < 12 then
-          begin
-            FViewer.RequestPageImage(I, Scale, 3000 + Pending);
-            Inc(Pending);
-          end;
-          if FViewer.TryGetNearestPageImage(I, Scale, Img, ImgScale) then
-            Sampling := TSkSamplingOptions.Create(TSkFilterMode.Linear, TSkMipmapMode.Linear)
-          else
-            Img := nil;
-        end;
-        if Img <> nil then
-          ACanvas.DrawImageRect(Img, R, Sampling);
-        if FShowPageNumbers then
-        begin
-          S := IntToStr(I + 1);
-          Paint.Color := FTextColor;
-          ACanvas.DrawSimpleText(S, R.Left + (W - FFont.MeasureText(S)) / 2, R.Bottom + NumberHeight - 5, FFont, Paint);
-        end;
-      end;
-      Top := Top + ItemHeight(I) + FSpacing;
-    end;
-  finally
-    ACanvas.Restore;
-  end;
-end;
-
-{ Input }
 
 procedure TPdfThumbnails.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Single);
 begin
   inherited;
   if CanFocus then
     SetFocus;
-  if Button = TMouseButton.mbLeft then
-    FPressedPage := PageAtY(Y);
+  FController.MouseDown(Button, Shift, TPointF.Create(X, Y));
 end;
 
 procedure TPdfThumbnails.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Single);
-var
-  P: Integer;
 begin
   inherited;
-  P := FPressedPage;
-  FPressedPage := -1;
-  if (Button = TMouseButton.mbLeft) and (P >= 0) and (PageAtY(Y) = P) and (FViewer <> nil) then
-  begin
-    FViewer.GoToPage(P);
-    if Assigned(FOnPageClick) then
-      FOnPageClick(Self, P);
-    Redraw;
-  end;
+  FController.MouseUp(Button, Shift, TPointF.Create(X, Y));
 end;
 
 procedure TPdfThumbnails.MouseWheel(Shift: TShiftState; WheelDelta: Integer; var Handled: Boolean);
@@ -541,26 +351,14 @@ begin
   inherited;
   if Handled then
     Exit;
-  SetScrollY(FScrollY - WheelDelta / 120 * WheelStep);
+  FController.MouseWheel(Shift, WheelDelta);
   Handled := True;
 end;
 
 procedure TPdfThumbnails.KeyDown(var Key: Word; var KeyChar: WideChar; Shift: TShiftState);
 begin
   inherited;
-  if FViewer = nil then
-    Exit;
-  case Key of
-    vkDown, vkRight: FViewer.NextPage;
-    vkUp, vkLeft: FViewer.PreviousPage;
-    vkHome: FViewer.GoToPage(0);
-    vkEnd: FViewer.GoToPage(FViewer.PageCount - 1);
-    vkNext: SetScrollY(FScrollY + Height);
-    vkPrior: SetScrollY(FScrollY - Height);
-  else
-    Exit;
-  end;
-  Key := 0;
+  FController.KeyDown(Key, Shift);
 end;
 
 end.

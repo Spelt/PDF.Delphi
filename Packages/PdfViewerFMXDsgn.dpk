@@ -36,6 +36,6 @@ requires
   PdfViewerFMX;
 
 contains
-  Pdf.Viewer.Register in '..\Source\Viewer\Pdf.Viewer.Register.pas';
+  FMX.PdfViewer.Register in '..\Source\Viewer\FMX.PdfViewer.Register.pas';
 
 end.
