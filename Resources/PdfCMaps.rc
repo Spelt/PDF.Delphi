@@ -1,5 +1,6 @@
 // Predefined CMaps in pdf.js's binary .bcmap format (Adobe, BSD licence: CMaps/LICENSE), 168 files.
 // Generated from Resources/CMaps/*.bcmap. Resource name: PDFCMAP_ + file name without extension, upper-cased, '-' -> '_'.
+// Compiled to Source/Font/PdfCMaps.res (committed) by Build/dcc.sh; paths are relative to this folder.
 PDFCMAP_78_EUC_H RCDATA "CMaps\\78-EUC-H.bcmap"
 PDFCMAP_78_EUC_V RCDATA "CMaps\\78-EUC-V.bcmap"
 PDFCMAP_78_H RCDATA "CMaps\\78-H.bcmap"

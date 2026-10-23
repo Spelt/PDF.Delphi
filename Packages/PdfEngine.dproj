@@ -67,7 +67,6 @@
         <GenDll>true</GenDll>
         <GenPackage>true</GenPackage>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
-        <DCC_ResourcePath>..\Resources;$(DCC_ResourcePath)</DCC_ResourcePath>
         <DCC_UnitSearchPath>..\Source\Core;..\Source\Render;..\Source\Font;..\Source\Viewer;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <SanitizedProjectName>PdfEngine</SanitizedProjectName>
         <DCC_E>false</DCC_E>
@@ -154,12 +153,6 @@
         <DCCReference Include="..\Source\Viewer\Pdf.Viewer.RenderQueue.pas"/>
         <DCCReference Include="..\Source\Viewer\Pdf.Viewer.Controller.pas"/>
         <DCCReference Include="..\Source\Viewer\Pdf.Viewer.ThumbnailsController.pas"/>
-        <RcCompile Include="..\Resources\PdfFonts.rc">
-            <Form>PdfFonts.res</Form>
-        </RcCompile>
-        <RcCompile Include="..\Resources\PdfCMaps.rc">
-            <Form>PdfCMaps.res</Form>
-        </RcCompile>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

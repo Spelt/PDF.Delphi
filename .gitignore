@@ -22,6 +22,10 @@ __recovery/
 *.stat
 *.res
 !*.dres
+# Fonts and CMaps compiled from Resources/*.rc, kept next to the units that load them so that
+# projects using Source directly (Boss, search path) link them without extra steps
+!Source/Font/PdfFonts.res
+!Source/Font/PdfCMaps.res
 
 # Test corpus (point PDF_CORPUS_DIRS at a pdf.js checkout instead)
 Tests/Corpus/*.pdf

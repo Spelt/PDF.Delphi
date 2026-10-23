@@ -69,7 +69,6 @@
     <PropertyGroup Condition="'$(Base)'!=''">
         <DCC_DcuOutput>..\Build\Demo\$(Platform)\$(Config)</DCC_DcuOutput>
         <DCC_ExeOutput>..\Build\Demo\$(Platform)\$(Config)</DCC_ExeOutput>
-        <DCC_ResourcePath>..\Resources;$(DCC_ResourcePath)</DCC_ResourcePath>
         <DCC_UnitSearchPath>..\Source\Core;..\Source\Render;..\Source\Font;..\Source\Viewer;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
         <SanitizedProjectName>PdfViewerDemo</SanitizedProjectName>
@@ -135,12 +134,6 @@
         </DCCReference>
         <RcCompile Include="Demo.Styles.rc">
             <Form>Demo.Styles.res</Form>
-        </RcCompile>
-        <RcCompile Include="..\Resources\PdfFonts.rc">
-            <Form>PdfFonts.res</Form>
-        </RcCompile>
-        <RcCompile Include="..\Resources\PdfCMaps.rc">
-            <Form>PdfCMaps.res</Form>
         </RcCompile>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

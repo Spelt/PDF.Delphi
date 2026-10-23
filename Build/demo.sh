@@ -9,9 +9,10 @@ ROOT="$(cygpath -w "$ROOTU")"
 OUT="$ROOT\\Build\\out"
 mkdir -p "$ROOTU/Build/out/demo_dcu"
 for rc in "$ROOTU"/Resources/*.rc; do
-  res="${rc%.rc}.res"
+  name="$(basename "${rc%.rc}")"
+  res="$ROOTU/Source/Font/$name.res"
   if [ ! -f "$res" ] || [ "$rc" -nt "$res" ]; then
-    (cd "$ROOTU/Resources" && "$BDS\\bin\\brcc32.exe" -fo"$(basename "$res")" "$(basename "$rc")" >/dev/null) || exit 1
+    (cd "$ROOTU/Resources" && "$BDS\\bin\\brcc32.exe" -fo"..\\Source\\Font\\$name.res" "$name.rc" >/dev/null) || exit 1
   fi
 done
 cd "$ROOTU/DemoFMX" || exit 1
@@ -24,5 +25,5 @@ if [ ! -f PdfViewerDemo.res ]; then
 fi
 "$BDS\\bin\\dcc64.exe" -B -Q -H \
   -U"$BDS\\lib\\win64\\release;$ROOT\\Source\\Core;$ROOT\\Source\\Render;$ROOT\\Source\\Font;$ROOT\\Source\\Viewer" \
-  -R"$ROOT\\Resources" "-NSSystem;System.Win;Winapi;Data;Xml;FMX" \
+  "-NSSystem;System.Win;Winapi;Data;Xml;FMX" \
   -E"$OUT" -N0"$OUT\\demo_dcu" -NH"$OUT\\demo_dcu" PdfViewerDemo.dpr
