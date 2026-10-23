@@ -33,7 +33,8 @@
     <GenDll>true</GenDll>
     <GenPackage>true</GenPackage>
     <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
-    <DCC_UnitSearchPath>..\Source\Core;..\Source\Render;..\Build\Lib\$(Platform)\$(Config);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+    <DCC_ResourcePath>..\Resources;$(DCC_ResourcePath)</DCC_ResourcePath>
+    <DCC_UnitSearchPath>..\Source\Core;..\Source\Render;..\Source\Font;..\Build\Lib\$(Platform)\$(Config);$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
     <SanitizedProjectName>PdfRenderSkia</SanitizedProjectName>
     <DCC_E>false</DCC_E>
     <DCC_N>false</DCC_N>
@@ -66,6 +67,21 @@
     <DCCReference Include="..\Source\Render\Pdf.Render.Images.pas"/>
     <DCCReference Include="..\Source\Render\Pdf.Render.Shading.pas"/>
     <DCCReference Include="..\Source\Render\Pdf.Render.Skia.pas"/>
+    <DCCReference Include="..\Source\Font\Pdf.Font.Glyphs.pas"/>
+    <DCCReference Include="..\Source\Font\Pdf.Font.TrueType.pas"/>
+    <DCCReference Include="..\Source\Font\Pdf.Font.CFF.pas"/>
+    <DCCReference Include="..\Source\Font\Pdf.Font.Type1.pas"/>
+    <DCCReference Include="..\Source\Font\Pdf.Font.Encodings.pas"/>
+    <DCCReference Include="..\Source\Font\Pdf.Font.GlyphList.pas"/>
+    <DCCReference Include="..\Source\Font\Pdf.Font.StandardFonts.pas"/>
+    <DCCReference Include="..\Source\Font\Pdf.Font.CMap.pas"/>
+    <DCCReference Include="..\Source\Font\Pdf.Font.Loader.pas"/>
+    <RcCompile Include="..\Resources\PdfFonts.rc">
+      <Form>PdfFonts.res</Form>
+    </RcCompile>
+    <RcCompile Include="..\Resources\PdfCMaps.rc">
+      <Form>PdfCMaps.res</Form>
+    </RcCompile>
     <BuildConfiguration Include="Base">
       <Key>Base</Key>
     </BuildConfiguration>

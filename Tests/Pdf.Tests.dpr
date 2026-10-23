@@ -23,6 +23,15 @@ uses
   Pdf.Render.State in '..\Source\Render\Pdf.Render.State.pas',
   Pdf.Render.Images in '..\Source\Render\Pdf.Render.Images.pas',
   Pdf.Render.Shading in '..\Source\Render\Pdf.Render.Shading.pas',
+  Pdf.Font.Glyphs in '..\Source\Font\Pdf.Font.Glyphs.pas',
+  Pdf.Font.TrueType in '..\Source\Font\Pdf.Font.TrueType.pas',
+  Pdf.Font.CFF in '..\Source\Font\Pdf.Font.CFF.pas',
+  Pdf.Font.Type1 in '..\Source\Font\Pdf.Font.Type1.pas',
+  Pdf.Font.Encodings in '..\Source\Font\Pdf.Font.Encodings.pas',
+  Pdf.Font.GlyphList in '..\Source\Font\Pdf.Font.GlyphList.pas',
+  Pdf.Font.StandardFonts in '..\Source\Font\Pdf.Font.StandardFonts.pas',
+  Pdf.Font.CMap in '..\Source\Font\Pdf.Font.CMap.pas',
+  Pdf.Font.Loader in '..\Source\Font\Pdf.Font.Loader.pas',
   Pdf.Render.Skia in '..\Source\Render\Pdf.Render.Skia.pas',
   Pdf.Tests.Builder in 'Pdf.Tests.Builder.pas',
   Pdf.Tests.Lexer in 'Pdf.Tests.Lexer.pas',
@@ -35,7 +44,13 @@ uses
   Pdf.Tests.Functions in 'Pdf.Tests.Functions.pas',
   Pdf.Tests.ColorSpaces in 'Pdf.Tests.ColorSpaces.pas',
   Pdf.Tests.Images in 'Pdf.Tests.Images.pas',
-  Pdf.Tests.Render in 'Pdf.Tests.Render.pas';
+  Pdf.Tests.Render in 'Pdf.Tests.Render.pas',
+  Pdf.Tests.Font.TrueType in 'Pdf.Tests.Font.TrueType.pas',
+  Pdf.Tests.Font.CFF in 'Pdf.Tests.Font.CFF.pas',
+  Pdf.Tests.Font.Type1 in 'Pdf.Tests.Font.Type1.pas',
+  Pdf.Tests.Font.Tables in 'Pdf.Tests.Font.Tables.pas',
+  Pdf.Tests.Font.CMap in 'Pdf.Tests.Font.CMap.pas',
+  Pdf.Tests.Text in 'Pdf.Tests.Text.pas';
 
 var
   Runner: ITestRunner;

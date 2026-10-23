@@ -416,7 +416,7 @@ begin
     for X := 0 to 99 do
       if not IsWhite(Img, X, Y) then
         Inc(NonWhite);
-  Assert.AreEqual(0, NonWhite, 'no glyphs and no placeholders by default');
+  Assert.IsTrue(NonWhite > 50, 'glyphs are drawn by default');
   FRenderer.ShowTextPlaceholders := True;
   Img := Render(Content, Res, []);
   NonWhite := 0;

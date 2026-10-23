@@ -41,6 +41,15 @@ contains
   Pdf.Render.State in '..\Source\Render\Pdf.Render.State.pas',
   Pdf.Render.Images in '..\Source\Render\Pdf.Render.Images.pas',
   Pdf.Render.Shading in '..\Source\Render\Pdf.Render.Shading.pas',
+  Pdf.Font.Glyphs in '..\Source\Font\Pdf.Font.Glyphs.pas',
+  Pdf.Font.TrueType in '..\Source\Font\Pdf.Font.TrueType.pas',
+  Pdf.Font.CFF in '..\Source\Font\Pdf.Font.CFF.pas',
+  Pdf.Font.Type1 in '..\Source\Font\Pdf.Font.Type1.pas',
+  Pdf.Font.Encodings in '..\Source\Font\Pdf.Font.Encodings.pas',
+  Pdf.Font.GlyphList in '..\Source\Font\Pdf.Font.GlyphList.pas',
+  Pdf.Font.StandardFonts in '..\Source\Font\Pdf.Font.StandardFonts.pas',
+  Pdf.Font.CMap in '..\Source\Font\Pdf.Font.CMap.pas',
+  Pdf.Font.Loader in '..\Source\Font\Pdf.Font.Loader.pas',
   Pdf.Render.Skia in '..\Source\Render\Pdf.Render.Skia.pas';
 
 end.

@@ -1,0 +1,18 @@
+// Substitute font programs for the standard 14 fonts (taken from pdf.js), loaded by Pdf.Font.StandardFonts.
+// Liberation Sans: SIL Open Font License (Fonts/LICENSE_LIBERATION). Foxit fonts: BSD (Fonts/LICENSE_FOXIT).
+// Compiled to PdfFonts.res by Build/dcc.sh (cgrc) and the dproj files; paths are relative to this folder.
+
+PDFFONT_LIBERATIONSANS_REGULAR    RCDATA "Fonts\LiberationSans-Regular.ttf"
+PDFFONT_LIBERATIONSANS_BOLD       RCDATA "Fonts\LiberationSans-Bold.ttf"
+PDFFONT_LIBERATIONSANS_ITALIC     RCDATA "Fonts\LiberationSans-Italic.ttf"
+PDFFONT_LIBERATIONSANS_BOLDITALIC RCDATA "Fonts\LiberationSans-BoldItalic.ttf"
+PDFFONT_FOXITSERIF                RCDATA "Fonts\FoxitSerif.pfb"
+PDFFONT_FOXITSERIFBOLD            RCDATA "Fonts\FoxitSerifBold.pfb"
+PDFFONT_FOXITSERIFITALIC          RCDATA "Fonts\FoxitSerifItalic.pfb"
+PDFFONT_FOXITSERIFBOLDITALIC      RCDATA "Fonts\FoxitSerifBoldItalic.pfb"
+PDFFONT_FOXITFIXED                RCDATA "Fonts\FoxitFixed.pfb"
+PDFFONT_FOXITFIXEDBOLD            RCDATA "Fonts\FoxitFixedBold.pfb"
+PDFFONT_FOXITFIXEDITALIC          RCDATA "Fonts\FoxitFixedItalic.pfb"
+PDFFONT_FOXITFIXEDBOLDITALIC      RCDATA "Fonts\FoxitFixedBoldItalic.pfb"
+PDFFONT_FOXITSYMBOL               RCDATA "Fonts\FoxitSymbol.pfb"
+PDFFONT_FOXITDINGBATS             RCDATA "Fonts\FoxitDingbats.pfb"

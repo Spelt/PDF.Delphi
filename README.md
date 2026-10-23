@@ -13,7 +13,7 @@ Het projectplan (fasen, teststrategie, risico's) staat in het Claude-document
 |---|---|---|
 | 1 | Parser (`Pdf.Core`) | **Klaar**: lexer, objectmodel, xref (tabellen, streams, `/Prev`, `/XRefStm`, object streams), herstel door scannen, filters (Flate, LZW, ASCII85, ASCIIHex, RunLength, PNG/TIFF-predictors), standaard security handler (RC4 40/128, AES-128, AES-256 / R2–R6), document en paginaboom met overerving |
 | 2 | Graphics (`Pdf.Render.Skia`) | **Klaar**: content-stream-interpreter met inline images, graphics state (`q`/`Q`, CTM, lijnparameters, dash, ExtGState alpha en blend modes), paden met nonzero/even-odd vullen, stroken en clippen, kleurruimtes (Device*, Cal*, Lab, ICCBased, Indexed, Separation, DeviceN, Pattern), functies type 0/2/3/4, images (1–16 bpc, Decode, ImageMask, SMask, Mask, DCT via Skia), form XObjects met transparency groups, shadings type 1–3, shading- en tiling-patronen. Tekst wordt gevolgd maar nog niet getekend (optionele plaatshouderkaders) |
-| 3 | Tekst en fonts | nog niet begonnen |
+| 3 | Tekst en fonts (`Pdf.Font.*`) | **Klaar**: eigen parsers voor TrueType (glyf, cmap, post), CFF/Type2 (incl. CID-keyed) en Type1 (eexec, flex, seac); glyphs worden als paden getekend, dus geen platform-fontmanager en identieke uitvoer op elk platform. Fontloader met encodings (Standard, WinAnsi, MacRoman, Symbol, ZapfDingbats, Differences), Adobe Glyph List, widths, Type0 met embedded en voorgedefinieerde CMaps (169 Adobe-CMaps als resource), CIDToGIDMap, verticale metrics, Type3-fonts, standaard-14-substitutie (Liberation Sans en Foxit-fonts uit pdf.js). Render modes 0–7 inclusief tekst-clipping |
 | 4 | Viewer-component (`TPdfViewer`) | nog niet begonnen |
 | 5 | Extra's | nog niet begonnen |
 
@@ -33,6 +33,9 @@ staan op de lijst voor fase 5.
 ```
 Source/Core/        Pdf.Core.* units (geen Skia, geen FMX)
 Source/Render/      Pdf.Render.* units (System.Skia, geen FMX)
+Source/Font/        Pdf.Font.* units: fontprogramma's, encodings, CMaps, loader (geen Skia)
+Resources/          substituutfonts en CMaps als RCDATA (*.rc, zie Resources/README.md)
+Tools/              generator voor de encoding- en glyphlist-tabellen (Node.js)
 Packages/           PdfCore.dpk en PdfRenderSkia.dpk (runtime packages, alle platformen)
 Tests/              Pdf.Tests.dpr / .dproj (DUnitX console) en Pdf.Tests.*.pas
 Tests/Data/         kleine testbestanden, o.a. versleutelde PDF's + generator
@@ -45,7 +48,8 @@ Build/dcc.sh        commandline-build met dcc64 vanuit Git Bash
 Vanuit de IDE: open `Tests\Pdf.Tests.dproj` of `Packages\PdfCore.dproj`.
 
 Vanaf de commandline (Git Bash, Win64; de tests hebben `sk4d.dll` uit
-`$(BDS)\bin64` naast de exe nodig, `Build/dcc.sh` kopieert die niet):
+`$(BDS)\bin64` naast de exe nodig, `Build/dcc.sh` kopieert die niet; het
+script compileert wel eerst `Resources/*.rc` naar `.res` met `brcc32`):
 
 ```bash
 sh Build/dcc.sh Tests/Pdf.Tests.dpr && Build/out/Pdf.Tests.exe --exitbehavior:Continue
@@ -143,3 +147,11 @@ geeft de onopgeloste waarde.
   patronen als Skia-gradients met transparante stops voor `/Extend false`.
 - Elke operator draait in een eigen try/except: een kapotte operator of
   XObject kost alleen dat element, niet de pagina.
+- Fonts: `Pdf.Font.Loader.TPdfFont` vertaalt een fontdictionary naar
+  "bytes in, glyphs met breedtes uit" (`Decode`) en levert glyph-outlines in
+  tekstruimte (`GetOutline`, gecachet). De renderer maakt daar Skia-paden van
+  (cache per font en glyph) en tekent ze onder de tekstmatrix, zodat alle
+  render modes, Tz, Ts en clipping met gewone padbewerkingen werken.
+  Niet-ingebedde fonts krijgen een standaard-14-substituut op naam en
+  descriptor-flags; niet-ingebedde CID-fonts gaan via ToUnicode naar het
+  substituut.

@@ -16,7 +16,7 @@ uses
   System.Generics.Collections, System.Skia,
   Pdf.Core.Types, Pdf.Core.Objects, Pdf.Core.Document,
   Pdf.Render.Functions, Pdf.Render.ColorSpaces, Pdf.Render.Content, Pdf.Render.State,
-  Pdf.Render.Images, Pdf.Render.Shading;
+  Pdf.Render.Images, Pdf.Render.Shading, Pdf.Font.Glyphs, Pdf.Font.Loader;
 
 type
   TPdfRenderError = record
@@ -58,6 +58,17 @@ type
     FShowTextPlaceholders: Boolean;
     FForcedColor: Boolean;      // uncoloured tiling pattern: colour operators are ignored
     FAborted: Boolean;
+    // text
+    FFonts: TObjectDictionary<Pointer, TPdfFont>;
+    FGlyphPaths: TObjectDictionary<TPdfFont, TDictionary<Integer, ISkPath>>;
+    FDefaultFont: TPdfFont;
+    FTextClip: ISkPathBuilder;   // device-space clip accumulated by render modes 4-7
+    FTextClipActive: Boolean;
+    FType3Depth: Integer;
+    function CurrentFont: TPdfFont;
+    function GlyphPath(Font: TPdfFont; GID: Integer): ISkPath;
+    procedure DrawType3Glyph(Font: TPdfFont; Code: Integer; const GlyphMatrix: TPdfMatrix; const Resources: IPdfDictionary);
+    procedure EndTextObject;
     procedure ResetForPage(const Matrix: TPdfMatrix);
     procedure Execute(const Data: TBytes; const Resources: IPdfDictionary);
     procedure ExecuteOperation(const Op: TPdfOperation; const Resources: IPdfDictionary);
@@ -92,7 +103,7 @@ type
     procedure DrawImage(const Image: IPdfStream; const Resources: IPdfDictionary; const CacheKey: string);
     procedure DoShading(const Name: string; const Resources: IPdfDictionary);
     // text
-    procedure ShowText(const Op: TPdfOperation);
+    procedure ShowText(const Op: TPdfOperation; const Resources: IPdfDictionary);
     procedure TextNewLine(TX, TY: Double);
     function GetErrorCount: Integer;
   public
@@ -111,8 +122,10 @@ type
     property ErrorCount: Integer read GetErrorCount;
     property UnknownOperators: Integer read FUnknownOperators;
     property AntiAlias: Boolean read FAntiAlias write FAntiAlias;
-    /// <summary>Draw a light frame where text would be shown (until fase 3 draws glyphs). Default False.</summary>
+    /// <summary>Draw a light frame around each shown string instead of glyphs (debugging aid). Default False.</summary>
     property ShowTextPlaceholders: Boolean read FShowTextPlaceholders write FShowTextPlaceholders;
+    /// <summary>Loaded fonts of the current document, keyed by font dictionary; cleared when another document is rendered.</summary>
+    function FontCount: Integer;
     /// <summary>Safety limit on the number of content operations per page (default 5 million).</summary>
     property MaxOperations: Int64 read FMaxOperations write FMaxOperations;
     property Document: TPdfDocument read FDocument;
@@ -174,10 +187,15 @@ begin
   FMaxOperations := 5000000;
   FAntiAlias := True;
   FState := TPdfGraphicsState.Create;
+  FFonts := TObjectDictionary<Pointer, TPdfFont>.Create([doOwnsValues]);
+  FGlyphPaths := TObjectDictionary<TPdfFont, TDictionary<Integer, ISkPath>>.Create([doOwnsValues]);
 end;
 
 destructor TPdfPageRenderer.Destroy;
 begin
+  FGlyphPaths.Free;
+  FFonts.Free;
+  FDefaultFont.Free;
   FState.Free;
   FActiveForms.Free;
   FPath.Free;
@@ -258,6 +276,14 @@ begin
   FBaseCTM := Matrix;
   FTextMatrix := TPdfMatrix.Identity;
   FTextLineMatrix := TPdfMatrix.Identity;
+  FTextClip := nil;
+  FTextClipActive := False;
+  FType3Depth := 0;
+end;
+
+function TPdfPageRenderer.FontCount: Integer;
+begin
+  Result := FFonts.Count;
 end;
 
 procedure TPdfPageRenderer.RenderPage(Page: TPdfPage; const Canvas: ISkCanvas; const Matrix: TPdfMatrix);
@@ -265,6 +291,13 @@ var
   SaveCount: Integer;
 begin
   // The document may have been (re)loaded after this renderer was created
+  if (FDocument <> Page.Document) or (FResolver <> Page.Document.Resolver) then
+  begin
+    FGlyphPaths.Clear;
+    FFonts.Clear;
+    FImageCache.Clear;
+    FNamedColorSpaces.Clear;
+  end;
   FDocument := Page.Document;
   FResolver := FDocument.Resolver;
   FCanvas := Canvas;
@@ -1091,42 +1124,239 @@ begin
   FTextMatrix := FTextLineMatrix;
 end;
 
-procedure TPdfPageRenderer.ShowText(const Op: TPdfOperation);
+function TPdfPageRenderer.CurrentFont: TPdfFont;
+var
+  Key: Pointer;
+begin
+  if FState.Font = nil then
+  begin
+    if FDefaultFont = nil then
+      FDefaultFont := TPdfFont.Create(nil, FResolver);
+    Exit(FDefaultFont);
+  end;
+  Key := Pointer(FState.Font);
+  if not FFonts.TryGetValue(Key, Result) then
+  begin
+    Result := TPdfFont.Create(FState.Font, FResolver);
+    FFonts.Add(Key, Result);
+  end;
+end;
+
+function TPdfPageRenderer.GlyphPath(Font: TPdfFont; GID: Integer): ISkPath;
+var
+  Cache: TDictionary<Integer, ISkPath>;
+  Outline: TPdfGlyphOutline;
+  B: ISkPathBuilder;
+  I: Integer;
+  C: TPdfOutlineCmd;
+begin
+  if not FGlyphPaths.TryGetValue(Font, Cache) then
+  begin
+    Cache := TDictionary<Integer, ISkPath>.Create;
+    FGlyphPaths.Add(Font, Cache);
+  end;
+  if Cache.TryGetValue(GID, Result) then
+    Exit;
+  Result := nil;
+  if Font.GetOutline(GID, Outline) and not Outline.IsEmpty then
+  begin
+    B := TSkPathBuilder.Create;
+    B.FillType := TSkPathFillType.Winding;
+    for I := 0 to Outline.Count - 1 do
+    begin
+      C := Outline.Cmds[I];
+      case C.Kind of
+        glMove: B.MoveTo(C.X1, C.Y1);
+        glLine: B.LineTo(C.X1, C.Y1);
+        glQuad: B.QuadTo(C.X1, C.Y1, C.X2, C.Y2);
+        glCubic: B.CubicTo(C.X1, C.Y1, C.X2, C.Y2, C.X3, C.Y3);
+        glClose: B.Close;
+      end;
+    end;
+    Result := B.Detach;
+  end;
+  Cache.Add(GID, Result);
+end;
+
+procedure TPdfPageRenderer.DrawType3Glyph(Font: TPdfFont; Code: Integer; const GlyphMatrix: TPdfMatrix;
+  const Resources: IPdfDictionary);
+var
+  Proc: IPdfStream;
+  Res: IPdfDictionary;
+  SavedTM, SavedTLM: TPdfMatrix;
+  SavedClip: ISkPathBuilder;
+  SavedClipActive: Boolean;
+begin
+  if FType3Depth >= 4 then
+    Exit;
+  Proc := Font.Type3GlyphProc(Code);
+  if Proc = nil then
+    Exit;
+  Res := Font.Type3Resources;
+  if Res = nil then
+    Res := Resources;
+  SavedTM := FTextMatrix;
+  SavedTLM := FTextLineMatrix;
+  SavedClip := FTextClip;
+  SavedClipActive := FTextClipActive;
+  Inc(FType3Depth);
+  PushState;
+  try
+    FState.CTM := Font.FontMatrix.Multiply(GlyphMatrix).Multiply(FState.CTM);
+    FTextClip := nil;
+    FTextClipActive := False;
+    EndPath;
+    Execute(Proc.GetDecodedData, Res);
+  finally
+    PopState;
+    Dec(FType3Depth);
+    FTextMatrix := SavedTM;
+    FTextLineMatrix := SavedTLM;
+    FTextClip := SavedClip;
+    FTextClipActive := SavedClipActive;
+  end;
+end;
+
+procedure TPdfPageRenderer.EndTextObject;
+var
+  Path: ISkPath;
+  Empty: ISkPathBuilder;
+begin
+  if FTextClipActive then
+  begin
+    if FTextClip <> nil then
+      Path := FTextClip.Detach
+    else
+    begin
+      Empty := TSkPathBuilder.Create; // no glyphs: clips everything
+      Path := Empty.Detach;
+    end;
+    FCanvas.ClipPath(Path, TSkClipOp.Intersect, FAntiAlias);
+  end;
+  FTextClip := nil;
+  FTextClipActive := False;
+end;
+
+procedure TPdfPageRenderer.ShowText(const Op: TPdfOperation; const Resources: IPdfDictionary);
 var
   Obj: IPdfObject;
   Arr: IPdfArray;
-  I, NChars, NSpaces: Integer;
-  Width, Adjust: Double;
-  Paint: ISkPaint;
-  M: TPdfMatrix;
-  B: ISkPathBuilder;
+  I: Integer;
+  Font: TPdfFont;
+  Adjust: Double;
+  FillPaint, StrokePaint: ISkPaint;
+  Mode: Integer;
+
+  procedure DrawPlaceholder(const S: TBytes; Width: Double);
+  var
+    M: TPdfMatrix;
+    B: ISkPathBuilder;
+    Paint: ISkPaint;
+  begin
+    if (FState.FontSize <= 0) or (Width <= 0) then
+      Exit;
+    M := TPdfMatrix.Create(FState.FontSize * FState.HorizontalScale, 0, 0, FState.FontSize, 0, FState.Rise)
+      .Multiply(FTextMatrix).Multiply(FState.CTM);
+    B := TSkPathBuilder.Create;
+    B.AddRect(TRectF.Create(0, -0.22, Width / Max(FState.FontSize, 1E-6) / Max(FState.HorizontalScale, 1E-6), 0.78));
+    Paint := TSkPaint.Create(TSkPaintStyle.Stroke);
+    Paint.AntiAlias := FAntiAlias;
+    Paint.Color := PdfApplyAlpha(FState.FillRGB, 0.35 * FState.FillAlpha);
+    Paint.StrokeWidth := 0;
+    FCanvas.DrawPath(B.Detach.Transform(PdfMatrixToSk(M)), Paint);
+  end;
 
   procedure ShowString(const S: TBytes);
   var
-    J: Integer;
+    Glyphs: TArray<TPdfGlyphInfo>;
+    G: TPdfGlyphInfo;
+    GlyphM: TPdfMatrix;
+    Path, UserPath: ISkPath;
+    Fs, Th, Tx, Ty, Total: Double;
+    DoFill, DoStroke, DoClip: Boolean;
   begin
-    NChars := Length(S);
-    NSpaces := 0;
-    for J := 0 to High(S) do
-      if S[J] = 32 then
-        Inc(NSpaces);
-    if NChars = 0 then
-      Exit;
-    // Approximate advance: 0.5 em per glyph until real font metrics exist
-    Width := (NChars * 0.5 * FState.FontSize + NChars * FState.CharSpacing + NSpaces * FState.WordSpacing) * FState.HorizontalScale;
-    if FShowTextPlaceholders and (FState.FontSize > 0) and (FState.RenderMode <> 3) and (FState.RenderMode <> 7) then
+    Glyphs := Font.Decode(S);
+    Fs := FState.FontSize;
+    Th := FState.HorizontalScale;
+    Total := 0;
+    DoFill := Mode in [0, 2, 4, 6];
+    DoStroke := Mode in [1, 2, 5, 6];
+    DoClip := Mode >= 4;
+    for G in Glyphs do
     begin
-      M := TPdfMatrix.Create(FState.FontSize * FState.HorizontalScale, 0, 0, FState.FontSize, 0, FState.Rise)
-        .Multiply(FTextMatrix).Multiply(FState.CTM);
-      B := TSkPathBuilder.Create;
-      B.AddRect(TRectF.Create(0, -0.22, Width / Max(FState.FontSize, 1E-6) / Max(FState.HorizontalScale, 1E-6), 0.78));
-      Paint := TSkPaint.Create(TSkPaintStyle.Stroke);
-      Paint.AntiAlias := FAntiAlias;
-      Paint.Color := PdfApplyAlpha(FState.FillRGB, 0.35 * FState.FillAlpha);
-      Paint.StrokeWidth := 0;
-      FCanvas.DrawPath(B.Detach.Transform(PdfMatrixToSk(M)), Paint);
+      GlyphM := TPdfMatrix.Create(Fs * Th, 0, 0, Fs, 0, FState.Rise).Multiply(FTextMatrix);
+      if Font.Vertical then
+        GlyphM := TPdfMatrix.Translation(-G.VX, -G.VY).Multiply(GlyphM);
+      if (Mode <> 3) and not FShowTextPlaceholders then
+      begin
+        if Font.IsType3 then
+        begin
+          if Mode <> 7 then
+            DrawType3Glyph(Font, G.Code, GlyphM, Resources);
+        end
+        else if G.GID >= 0 then
+        begin
+          Path := GlyphPath(Font, G.GID);
+          if Path <> nil then
+          begin
+            UserPath := Path.Transform(PdfMatrixToSk(GlyphM));
+            if DoFill or DoStroke then
+            begin
+              FCanvas.Save;
+              try
+                FCanvas.Concat(PdfMatrixToSk(FState.CTM));
+                if DoFill then
+                begin
+                  if FillPaint = nil then
+                    FillPaint := MakeFillPaint;
+                  FCanvas.DrawPath(UserPath, FillPaint);
+                end;
+                if DoStroke then
+                begin
+                  if StrokePaint = nil then
+                    StrokePaint := MakeStrokePaint;
+                  FCanvas.DrawPath(UserPath, StrokePaint);
+                end;
+              finally
+                FCanvas.Restore;
+              end;
+            end;
+            if DoClip then
+            begin
+              if FTextClip = nil then
+                FTextClip := TSkPathBuilder.Create;
+              FTextClip.AddPath(UserPath.Transform(PdfMatrixToSk(FState.CTM)));
+            end;
+          end;
+        end;
+      end;
+      if DoClip then
+        FTextClipActive := True;
+      // Advance
+      if Font.Vertical then
+      begin
+        Ty := G.W1 * Fs + FState.CharSpacing;
+        if G.IsSpace then
+          Ty := Ty + FState.WordSpacing;
+        FTextMatrix := TPdfMatrix.Translation(0, Ty).Multiply(FTextMatrix);
+      end
+      else
+      begin
+        Tx := G.Width * Fs + FState.CharSpacing;
+        if G.IsSpace then
+          Tx := Tx + FState.WordSpacing;
+        Tx := Tx * Th;
+        Total := Total + Tx;
+        FTextMatrix := TPdfMatrix.Translation(Tx, 0).Multiply(FTextMatrix);
+      end;
     end;
-    FTextMatrix := TPdfMatrix.Translation(Width, 0).Multiply(FTextMatrix);
+    if FShowTextPlaceholders and (Mode <> 3) and not Font.Vertical then
+    begin
+      // Draw the frame where the string started
+      FTextMatrix := TPdfMatrix.Translation(-Total, 0).Multiply(FTextMatrix);
+      DrawPlaceholder(S, Total);
+      FTextMatrix := TPdfMatrix.Translation(Total, 0).Multiply(FTextMatrix);
+    end;
   end;
 
 begin
@@ -1135,6 +1365,10 @@ begin
   Obj := Op.Obj(Op.Count - 1);
   if Obj = nil then
     Exit;
+  Font := CurrentFont;
+  Mode := FState.RenderMode;
+  if (Mode < 0) or (Mode > 7) then
+    Mode := 0;
   if Obj.Kind = okString then
     ShowString((Obj as IPdfString).Bytes)
   else if Obj.Kind = okArray then
@@ -1147,8 +1381,16 @@ begin
         ShowString((Obj as IPdfString).Bytes)
       else if PdfIsNumber(Obj) then
       begin
-        Adjust := -PdfAsNumber(Obj) / 1000 * FState.FontSize * FState.HorizontalScale;
-        FTextMatrix := TPdfMatrix.Translation(Adjust, 0).Multiply(FTextMatrix);
+        if Font.Vertical then
+        begin
+          Adjust := -PdfAsNumber(Obj) / 1000 * FState.FontSize;
+          FTextMatrix := TPdfMatrix.Translation(0, Adjust).Multiply(FTextMatrix);
+        end
+        else
+        begin
+          Adjust := -PdfAsNumber(Obj) / 1000 * FState.FontSize * FState.HorizontalScale;
+          FTextMatrix := TPdfMatrix.Translation(Adjust, 0).Multiply(FTextMatrix);
+        end;
       end;
     end;
   end;
@@ -1436,6 +1678,8 @@ begin
         begin
           FTextMatrix := TPdfMatrix.Identity;
           FTextLineMatrix := TPdfMatrix.Identity;
+          FTextClip := nil;
+          FTextClipActive := False;
           Exit;
         end;
         if (Name = 'BMC') or (Name = 'BDC') or (Name = 'BX') or (Name = 'BI') then
@@ -1489,19 +1733,24 @@ begin
             DrawImage(Stream, Resources, '');
           Exit;
         end;
-        if (Name = 'ET') or (Name = 'EMC') or (Name = 'EX') then
+        if Name = 'ET' then
+        begin
+          EndTextObject;
+          Exit;
+        end;
+        if (Name = 'EMC') or (Name = 'EX') then
           Exit;
       end;
     'T':
       begin
         if Name = 'Tj' then
         begin
-          ShowText(Op);
+          ShowText(Op, Resources);
           Exit;
         end;
         if Name = 'TJ' then
         begin
-          ShowText(Op);
+          ShowText(Op, Resources);
           Exit;
         end;
         if Name = 'Td' then
@@ -1575,7 +1824,7 @@ begin
       if Name = '''' then
       begin
         TextNewLine(0, -FState.Leading);
-        ShowText(Op);
+        ShowText(Op, Resources);
         Exit;
       end;
     '"':
@@ -1584,7 +1833,7 @@ begin
         FState.WordSpacing := Op.Num(0);
         FState.CharSpacing := Op.Num(1);
         TextNewLine(0, -FState.Leading);
-        ShowText(Op);
+        ShowText(Op, Resources);
         Exit;
       end;
     'i':
