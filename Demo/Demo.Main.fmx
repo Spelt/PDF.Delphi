@@ -5,7 +5,6 @@ object MainForm: TMainForm
   ClientHeight = 700
   ClientWidth = 960
   Position = ScreenCenter
-  Quality = HighQuality
   FormFactor.Width = 320
   FormFactor.Height = 480
   FormFactor.Devices = [Desktop]
@@ -132,7 +131,7 @@ object MainForm: TMainForm
       Margins.Left = 12.000000000000000000
       Margins.Top = 4.000000000000000000
       Margins.Bottom = 4.000000000000000000
-      Position.X = 556.000000000000000000
+      Position.X = 548.000000000000000000
       Position.Y = 4.000000000000000000
       Size.Width = 90.000000000000000000
       Size.Height = 32.000000000000000000
@@ -144,22 +143,22 @@ object MainForm: TMainForm
       Touch.InteractiveGestures = [LongTap, DoubleTap]
       Align = Right
       TabOrder = 10
-      TextPrompt = 'Zoeken (Enter)'
+      Position.X = 728.000000000000000000
+      Position.Y = 6.000000000000000000
       Margins.Top = 6.000000000000000000
       Margins.Right = 4.000000000000000000
       Margins.Bottom = 6.000000000000000000
-      Position.X = 724.000000000000000000
-      Position.Y = 6.000000000000000000
       Size.Width = 160.000000000000000000
       Size.Height = 28.000000000000000000
       Size.PlatformDefault = False
+      TextPrompt = 'Zoeken (Enter)'
       OnKeyDown = SearchEditKeyDown
     end
     object FindPrevButton: TSpeedButton
       Align = Right
       Margins.Top = 4.000000000000000000
       Margins.Bottom = 4.000000000000000000
-      Position.X = 888.000000000000000000
+      Position.X = 892.000000000000000000
       Position.Y = 4.000000000000000000
       Size.Width = 32.000000000000000000
       Size.Height = 32.000000000000000000
@@ -172,7 +171,7 @@ object MainForm: TMainForm
       Margins.Top = 4.000000000000000000
       Margins.Right = 4.000000000000000000
       Margins.Bottom = 4.000000000000000000
-      Position.X = 920.000000000000000000
+      Position.X = 924.000000000000000000
       Position.Y = 4.000000000000000000
       Size.Width = 32.000000000000000000
       Size.Height = 32.000000000000000000
@@ -184,7 +183,7 @@ object MainForm: TMainForm
       Align = Client
       Margins.Left = 16.000000000000000000
       Margins.Right = 8.000000000000000000
-      Size.Width = 400.000000000000000000
+      Size.Width = 66.000000000000000000
       Size.Height = 40.000000000000000000
       Size.PlatformDefault = False
       TabOrder = 9
@@ -205,6 +204,21 @@ object MainForm: TMainForm
     OnItemClick = OutlineListItemClick
     Viewport.Width = 256.000000000000000000
     Viewport.Height = 656.000000000000000000
+  end
+  object Viewer: TPdfViewer
+    Align = Client
+    CanFocus = True
+    Size.Width = 700.000000000000000000
+    Size.Height = 660.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 2
+    TabStop = True
+    Touch.InteractiveGestures = [Zoom, DoubleTap]
+    OnPageChange = ViewerPageChange
+    OnLoadError = ViewerLoadError
+    OnZoomChange = ViewerZoomChange
+    OnOpenURI = ViewerOpenURI
+    OnSelectionChange = ViewerSelectionChange
   end
   object OpenDialog: TOpenDialog
     DefaultExt = 'pdf'

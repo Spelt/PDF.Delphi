@@ -1,7 +1,7 @@
 unit Demo.Main;
 
-{ Demo for TPdfViewer: open a file, navigate, zoom. The viewer is created in
-  code so the demo builds without installing the design-time package. }
+{ Demo for TPdfViewer: open a file, navigate, zoom, search, bookmarks. The viewer
+  is placed on the form at design time (install Packages\PdfViewerFMXDsgn first). }
 
 interface
 
@@ -23,12 +23,13 @@ type
     FitPageButton: TSpeedButton;
     ZoomLabel: TLabel;
     OpenDialog: TOpenDialog;
-    StatusLabel: TLabel;
     SearchEdit: TEdit;
     FindNextButton: TSpeedButton;
     FindPrevButton: TSpeedButton;
     OutlineButton: TSpeedButton;
     OutlineList: TListBox;
+    StatusLabel: TLabel;
+    Viewer: TPdfViewer;
     procedure SearchEditKeyDown(Sender: TObject; var Key: Word; var KeyChar: WideChar; Shift: TShiftState);
     procedure FindNextButtonClick(Sender: TObject);
     procedure FindPrevButtonClick(Sender: TObject);
@@ -42,13 +43,12 @@ type
     procedure ZoomInButtonClick(Sender: TObject);
     procedure FitWidthButtonClick(Sender: TObject);
     procedure FitPageButtonClick(Sender: TObject);
-  private
-    FViewer: TPdfViewer;
     procedure ViewerPageChange(Sender: TObject; PageIndex: Integer);
     procedure ViewerZoomChange(Sender: TObject);
     procedure ViewerLoadError(Sender: TObject; const FileName: string; E: Exception; var Handled: Boolean);
     procedure ViewerOpenURI(Sender: TObject; const URI: string);
     procedure ViewerSelectionChange(Sender: TObject);
+  private
     procedure UpdateStatus;
     procedure OpenFile(const FileName: string);
     procedure FillOutline;
@@ -68,14 +68,6 @@ uses
 
 procedure TMainForm.FormCreate(Sender: TObject);
 begin
-  FViewer := TPdfViewer.Create(Self);
-  FViewer.Parent := Self;
-  FViewer.Align := TAlignLayout.Client;
-  FViewer.OnPageChange := ViewerPageChange;
-  FViewer.OnZoomChange := ViewerZoomChange;
-  FViewer.OnLoadError := ViewerLoadError;
-  FViewer.OnOpenURI := ViewerOpenURI;
-  FViewer.OnSelectionChange := ViewerSelectionChange;
   OutlineList.Visible := False;
   OpenDialog.Filter := 'PDF-bestanden (*.pdf)|*.pdf|Alle bestanden (*.*)|*.*';
   UpdateStatus;
@@ -85,11 +77,11 @@ end;
 
 procedure TMainForm.OpenFile(const FileName: string);
 begin
-  FViewer.LoadFromFile(FileName);
+  Viewer.LoadFromFile(FileName);
   Caption := 'PdfViewer - ' + ExtractFileName(FileName);
   FillOutline;
   UpdateStatus;
-  FViewer.SetFocus;
+  Viewer.SetFocus;
 end;
 
 procedure TMainForm.FillOutline;
@@ -113,8 +105,8 @@ begin
   OutlineList.BeginUpdate;
   try
     OutlineList.Clear;
-    if (FViewer.Outline <> nil) and (FViewer.Outline.Count > 0) then
-      AddItems(FViewer.Outline, 0);
+    if (Viewer.Outline <> nil) and (Viewer.Outline.Count > 0) then
+      AddItems(Viewer.Outline, 0);
   finally
     OutlineList.EndUpdate;
   end;
@@ -131,33 +123,33 @@ end;
 procedure TMainForm.OutlineListItemClick(const Sender: TCustomListBox; const Item: TListBoxItem);
 begin
   if (Item <> nil) and (Item.TagObject is TPdfOutlineItem) then
-    FViewer.GoToOutlineItem(TPdfOutlineItem(Item.TagObject));
+    Viewer.GoToOutlineItem(TPdfOutlineItem(Item.TagObject));
 end;
 
 procedure TMainForm.DoFind;
 var
   N: Integer;
 begin
-  N := FViewer.Find(SearchEdit.Text);
+  N := Viewer.Find(SearchEdit.Text);
   if SearchEdit.Text = '' then
     StatusLabel.Text := ''
   else if N = 0 then
     StatusLabel.Text := 'Niet gevonden: ' + SearchEdit.Text
   else
-    StatusLabel.Text := Format('%d / %d gevonden', [FViewer.ActiveMatch + 1, N]);
+    StatusLabel.Text := Format('%d / %d gevonden', [Viewer.ActiveMatch + 1, N]);
 end;
 
 procedure TMainForm.SearchEditKeyDown(Sender: TObject; var Key: Word; var KeyChar: WideChar; Shift: TShiftState);
 begin
   if Key = vkReturn then
   begin
-    if SameText(FViewer.SearchQuery, SearchEdit.Text) and (FViewer.SearchMatchCount > 0) then
+    if SameText(Viewer.SearchQuery, SearchEdit.Text) and (Viewer.SearchMatchCount > 0) then
     begin
       if ssShift in Shift then
-        FViewer.FindPrevious
+        Viewer.FindPrevious
       else
-        FViewer.FindNext;
-      StatusLabel.Text := Format('%d / %d gevonden', [FViewer.ActiveMatch + 1, FViewer.SearchMatchCount]);
+        Viewer.FindNext;
+      StatusLabel.Text := Format('%d / %d gevonden', [Viewer.ActiveMatch + 1, Viewer.SearchMatchCount]);
     end
     else
       DoFind;
@@ -166,7 +158,7 @@ begin
   else if Key = vkEscape then
   begin
     SearchEdit.Text := '';
-    FViewer.ClearSearch;
+    Viewer.ClearSearch;
     UpdateStatus;
     Key := 0;
   end;
@@ -174,18 +166,18 @@ end;
 
 procedure TMainForm.FindNextButtonClick(Sender: TObject);
 begin
-  if not SameText(FViewer.SearchQuery, SearchEdit.Text) then
+  if not SameText(Viewer.SearchQuery, SearchEdit.Text) then
     DoFind
-  else if FViewer.FindNext then
-    StatusLabel.Text := Format('%d / %d gevonden', [FViewer.ActiveMatch + 1, FViewer.SearchMatchCount]);
+  else if Viewer.FindNext then
+    StatusLabel.Text := Format('%d / %d gevonden', [Viewer.ActiveMatch + 1, Viewer.SearchMatchCount]);
 end;
 
 procedure TMainForm.FindPrevButtonClick(Sender: TObject);
 begin
-  if not SameText(FViewer.SearchQuery, SearchEdit.Text) then
+  if not SameText(Viewer.SearchQuery, SearchEdit.Text) then
     DoFind
-  else if FViewer.FindPrevious then
-    StatusLabel.Text := Format('%d / %d gevonden', [FViewer.ActiveMatch + 1, FViewer.SearchMatchCount]);
+  else if Viewer.FindPrevious then
+    StatusLabel.Text := Format('%d / %d gevonden', [Viewer.ActiveMatch + 1, Viewer.SearchMatchCount]);
 end;
 
 procedure TMainForm.ViewerOpenURI(Sender: TObject; const URI: string);
@@ -201,7 +193,7 @@ procedure TMainForm.ViewerSelectionChange(Sender: TObject);
 var
   S: string;
 begin
-  S := FViewer.SelectedText;
+  S := Viewer.SelectedText;
   if S <> '' then
     StatusLabel.Text := Format('%d tekens geselecteerd (Ctrl+C kopieert)', [Length(S)])
   else
@@ -216,32 +208,32 @@ end;
 
 procedure TMainForm.PrevButtonClick(Sender: TObject);
 begin
-  FViewer.PreviousPage;
+  Viewer.PreviousPage;
 end;
 
 procedure TMainForm.NextButtonClick(Sender: TObject);
 begin
-  FViewer.NextPage;
+  Viewer.NextPage;
 end;
 
 procedure TMainForm.ZoomOutButtonClick(Sender: TObject);
 begin
-  FViewer.ZoomOut;
+  Viewer.ZoomOut;
 end;
 
 procedure TMainForm.ZoomInButtonClick(Sender: TObject);
 begin
-  FViewer.ZoomIn;
+  Viewer.ZoomIn;
 end;
 
 procedure TMainForm.FitWidthButtonClick(Sender: TObject);
 begin
-  FViewer.FitWidth;
+  Viewer.FitWidth;
 end;
 
 procedure TMainForm.FitPageButtonClick(Sender: TObject);
 begin
-  FViewer.FitPage;
+  Viewer.FitPage;
 end;
 
 procedure TMainForm.ViewerPageChange(Sender: TObject; PageIndex: Integer);
@@ -263,17 +255,17 @@ end;
 
 procedure TMainForm.UpdateStatus;
 begin
-  if FViewer.IsLoaded then
+  if Viewer.IsLoaded then
   begin
-    PageLabel.Text := Format('%d / %d', [FViewer.CurrentPage + 1, FViewer.PageCount]);
-    StatusLabel.Text := Format('%s  -  PDF %s', [ExtractFileName(FViewer.FileName), FViewer.Document.Version]);
+    PageLabel.Text := Format('%d / %d', [Viewer.CurrentPage + 1, Viewer.PageCount]);
+    StatusLabel.Text := Format('%s  -  PDF %s', [ExtractFileName(Viewer.FileName), Viewer.Document.Version]);
   end
   else
   begin
     PageLabel.Text := '- / -';
     StatusLabel.Text := 'Open een PDF (knop links, of sleep een pad als argument mee)';
   end;
-  ZoomLabel.Text := Format('%d%%', [Round(FViewer.Zoom * 100)]);
+  ZoomLabel.Text := Format('%d%%', [Round(Viewer.Zoom * 100)]);
 end;
 
 end.

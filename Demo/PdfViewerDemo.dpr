@@ -2,6 +2,7 @@ program PdfViewerDemo;
 
 uses
   System.StartUpCopy,
+  FMX.Types,
   FMX.Forms,
   Demo.Main in 'Demo.Main.pas' {MainForm};
 
