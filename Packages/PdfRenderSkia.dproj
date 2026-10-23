@@ -61,8 +61,6 @@
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
         <DCC_DcuOutput>..\Build\Lib\$(Platform)\$(Config)</DCC_DcuOutput>
-        <DCC_BplOutput>..\Build\Bpl\$(Platform)\$(Config)</DCC_BplOutput>
-        <DCC_DcpOutput>..\Build\Lib\$(Platform)\$(Config)</DCC_DcpOutput>
         <DCC_ExeOutput>..\Build\Bpl\$(Platform)\$(Config)</DCC_ExeOutput>
         <DCC_Description>Pdf.Render.Skia - renders Pdf.Core pages to an ISkCanvas (no FMX)</DCC_Description>
         <RuntimeOnlyPackage>true</RuntimeOnlyPackage>
