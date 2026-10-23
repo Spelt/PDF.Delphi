@@ -1,0 +1,144 @@
+object MainForm: TMainForm
+  Left = 0
+  Top = 0
+  Caption = 'PdfViewer demo'
+  ClientHeight = 700
+  ClientWidth = 960
+  Position = ScreenCenter
+  FormFactor.Width = 320
+  FormFactor.Height = 480
+  FormFactor.Devices = [Desktop]
+  OnCreate = FormCreate
+  DesignerMasterStyle = 0
+  object ToolBar: TToolBar
+    Size.Width = 960.000000000000000000
+    Size.Height = 40.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 0
+    object OpenButton: TSpeedButton
+      Align = Left
+      Margins.Left = 4.000000000000000000
+      Margins.Top = 4.000000000000000000
+      Margins.Bottom = 4.000000000000000000
+      Position.X = 4.000000000000000000
+      Position.Y = 4.000000000000000000
+      Size.Width = 72.000000000000000000
+      Size.Height = 32.000000000000000000
+      Size.PlatformDefault = False
+      Text = 'Openen'
+      OnClick = OpenButtonClick
+    end
+    object PrevButton: TSpeedButton
+      Align = Left
+      Margins.Left = 12.000000000000000000
+      Margins.Top = 4.000000000000000000
+      Margins.Bottom = 4.000000000000000000
+      Position.X = 92.000000000000000000
+      Position.Y = 4.000000000000000000
+      Size.Width = 32.000000000000000000
+      Size.Height = 32.000000000000000000
+      Size.PlatformDefault = False
+      Text = '<'
+      OnClick = PrevButtonClick
+    end
+    object PageLabel: TLabel
+      Align = Left
+      Margins.Left = 4.000000000000000000
+      Position.X = 128.000000000000000000
+      Size.Width = 72.000000000000000000
+      Size.Height = 40.000000000000000000
+      Size.PlatformDefault = False
+      TextSettings.HorzAlign = Center
+      Text = '- / -'
+      TabOrder = 1
+    end
+    object NextButton: TSpeedButton
+      Align = Left
+      Margins.Top = 4.000000000000000000
+      Margins.Bottom = 4.000000000000000000
+      Position.X = 200.000000000000000000
+      Position.Y = 4.000000000000000000
+      Size.Width = 32.000000000000000000
+      Size.Height = 32.000000000000000000
+      Size.PlatformDefault = False
+      Text = '>'
+      OnClick = NextButtonClick
+    end
+    object ZoomOutButton: TSpeedButton
+      Align = Left
+      Margins.Left = 12.000000000000000000
+      Margins.Top = 4.000000000000000000
+      Margins.Bottom = 4.000000000000000000
+      Position.X = 244.000000000000000000
+      Position.Y = 4.000000000000000000
+      Size.Width = 32.000000000000000000
+      Size.Height = 32.000000000000000000
+      Size.PlatformDefault = False
+      Text = '-'
+      OnClick = ZoomOutButtonClick
+    end
+    object ZoomLabel: TLabel
+      Align = Left
+      Position.X = 276.000000000000000000
+      Size.Width = 56.000000000000000000
+      Size.Height = 40.000000000000000000
+      Size.PlatformDefault = False
+      TextSettings.HorzAlign = Center
+      Text = '100%'
+      TabOrder = 5
+    end
+    object ZoomInButton: TSpeedButton
+      Align = Left
+      Margins.Top = 4.000000000000000000
+      Margins.Bottom = 4.000000000000000000
+      Position.X = 332.000000000000000000
+      Position.Y = 4.000000000000000000
+      Size.Width = 32.000000000000000000
+      Size.Height = 32.000000000000000000
+      Size.PlatformDefault = False
+      Text = '+'
+      OnClick = ZoomInButtonClick
+    end
+    object FitWidthButton: TSpeedButton
+      Align = Left
+      Margins.Left = 12.000000000000000000
+      Margins.Top = 4.000000000000000000
+      Margins.Bottom = 4.000000000000000000
+      Position.X = 376.000000000000000000
+      Position.Y = 4.000000000000000000
+      Size.Width = 80.000000000000000000
+      Size.Height = 32.000000000000000000
+      Size.PlatformDefault = False
+      Text = 'Breedte'
+      OnClick = FitWidthButtonClick
+    end
+    object FitPageButton: TSpeedButton
+      Align = Left
+      Margins.Left = 4.000000000000000000
+      Margins.Top = 4.000000000000000000
+      Margins.Bottom = 4.000000000000000000
+      Position.X = 460.000000000000000000
+      Position.Y = 4.000000000000000000
+      Size.Width = 80.000000000000000000
+      Size.Height = 32.000000000000000000
+      Size.PlatformDefault = False
+      Text = 'Pagina'
+      OnClick = FitPageButtonClick
+    end
+    object StatusLabel: TLabel
+      Align = Client
+      Margins.Left = 16.000000000000000000
+      Margins.Right = 8.000000000000000000
+      Size.Width = 392.000000000000000000
+      Size.Height = 40.000000000000000000
+      Size.PlatformDefault = False
+      Text = ''
+      TabOrder = 9
+    end
+  end
+  object OpenDialog: TOpenDialog
+    DefaultExt = 'pdf'
+    Left = 880
+    Top = 64
+  end
+end

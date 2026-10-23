@@ -251,6 +251,8 @@ var
 begin
   PageSizePixels(Page, Scale, W, H);
   Surface := TSkSurface.MakeRaster(W, H);
+  if Surface = nil then
+    raise EPdfException.CreateFmt('Cannot allocate a %dx%d raster for page %d at scale %.2f', [W, H, Page.Index + 1, Scale]);
   Surface.Canvas.Clear(Background);
   RenderPage(Page, Surface.Canvas, PageMatrix(Page, Scale));
   Result := Surface.MakeImageSnapshot;

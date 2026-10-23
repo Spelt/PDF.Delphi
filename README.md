@@ -14,7 +14,7 @@ Het projectplan (fasen, teststrategie, risico's) staat in het Claude-document
 | 1 | Parser (`Pdf.Core`) | **Klaar**: lexer, objectmodel, xref (tabellen, streams, `/Prev`, `/XRefStm`, object streams), herstel door scannen, filters (Flate, LZW, ASCII85, ASCIIHex, RunLength, PNG/TIFF-predictors), standaard security handler (RC4 40/128, AES-128, AES-256 / R2–R6), document en paginaboom met overerving |
 | 2 | Graphics (`Pdf.Render.Skia`) | **Klaar**: content-stream-interpreter met inline images, graphics state (`q`/`Q`, CTM, lijnparameters, dash, ExtGState alpha en blend modes), paden met nonzero/even-odd vullen, stroken en clippen, kleurruimtes (Device*, Cal*, Lab, ICCBased, Indexed, Separation, DeviceN, Pattern), functies type 0/2/3/4, images (1–16 bpc, Decode, ImageMask, SMask, Mask, DCT via Skia), form XObjects met transparency groups, shadings type 1–3, shading- en tiling-patronen. Tekst wordt gevolgd maar nog niet getekend (optionele plaatshouderkaders) |
 | 3 | Tekst en fonts (`Pdf.Font.*`) | **Klaar**: eigen parsers voor TrueType (glyf, cmap, post), CFF/Type2 (incl. CID-keyed) en Type1 (eexec, flex, seac); glyphs worden als paden getekend, dus geen platform-fontmanager en identieke uitvoer op elk platform. Fontloader met encodings (Standard, WinAnsi, MacRoman, Symbol, ZapfDingbats, Differences), Adobe Glyph List, widths, Type0 met embedded en voorgedefinieerde CMaps (169 Adobe-CMaps als resource), CIDToGIDMap, verticale metrics, Type3-fonts, standaard-14-substitutie (Liberation Sans en Foxit-fonts uit pdf.js). Render modes 0–7 inclusief tekst-clipping |
-| 4 | Viewer-component (`TPdfViewer`) | nog niet begonnen |
+| 4 | Viewer-component (`TPdfViewer`) | **Klaar**: FMX-control op `TSkCustomControl` met verticale scroll van alle pagina's, alleen zichtbare pagina's renderen, achtergrondrendering in een eigen thread met prioriteitswachtrij, LRU-cache met geheugenlimiet, eerst de geschaalde oude weergave en daarna scherp, Zoom/FitWidth/FitPage, pinch-to-zoom en dubbeltik, muiswiel (Ctrl = zoom), slepen, scrollbalken, toetsenbord, `GoToPage`, `OnPageChange`, `OnLoadError`, `RenderPageToImage`. Packages `PdfViewerFMX` (runtime) en `PdfViewerFMXDsgn` (designtime), demo-app in `Demo/` |
 | 5 | Extra's | nog niet begonnen |
 
 Beeldcodecs (DCT, JPX, JBIG2, CCITT) laat `Pdf.Core` bewust ongedecodeerd door
@@ -34,9 +34,11 @@ staan op de lijst voor fase 5.
 Source/Core/        Pdf.Core.* units (geen Skia, geen FMX)
 Source/Render/      Pdf.Render.* units (System.Skia, geen FMX)
 Source/Font/        Pdf.Font.* units: fontprogramma's, encodings, CMaps, loader (geen Skia)
+Source/Viewer/      Pdf.Viewer.* (layout, cache, renderthread; geen FMX) en FMX.PdfViewer
 Resources/          substituutfonts en CMaps als RCDATA (*.rc, zie Resources/README.md)
 Tools/              generator voor de encoding- en glyphlist-tabellen (Node.js)
-Packages/           PdfCore.dpk en PdfRenderSkia.dpk (runtime packages, alle platformen)
+Packages/           PdfCore, PdfRenderSkia, PdfViewerFMX (runtime) en PdfViewerFMXDsgn (designtime)
+Demo/               PdfViewerDemo: FMX-app met openen, bladeren en zoomen
 Tests/              Pdf.Tests.dpr / .dproj (DUnitX console) en Pdf.Tests.*.pas
 Tests/Data/         kleine testbestanden, o.a. versleutelde PDF's + generator
 Tests/Corpus/       (leeg) eigen test-PDF's; wordt door Pdf.Tests.Corpus gelezen
@@ -127,6 +129,28 @@ end;
 objectmodel (`IPdfDictionary`, `IPdfArray`, `IPdfStream`, ...). Dictionary's en
 arrays lossen indirecte verwijzingen zelf op via `Get(...)`; `GetRaw(...)`
 geeft de onopgeloste waarde.
+
+## Viewer-component
+
+Installeer `Packages\PdfViewerFMXDsgn.dproj` (na `PdfCore`, `PdfRenderSkia` en
+`PdfViewerFMX`) voor een `TPdfViewer` op het palet "PDF", of maak hem in code:
+
+```pascal
+uses FMX.PdfViewer;
+
+Viewer := TPdfViewer.Create(Self);
+Viewer.Parent := Self;
+Viewer.Align := TAlignLayout.Client;
+Viewer.ZoomMode := zmFitWidth;             // of zmFitPage, of Zoom := 1.5
+Viewer.OnPageChange := ViewerPageChange;   // (Sender; PageIndex: Integer)
+Viewer.LoadFromFile('brochure.pdf');       // optioneel wachtwoord als 2e parameter
+Viewer.GoToPage(3);
+```
+
+Rendering gebeurt op `Zoom x schermschaal` in een eigen thread; de UI-thread
+tekent alleen kant-en-klare `ISkImage`s. `CacheLimitMB` begrenst het geheugen
+(standaard 256 MB, op mobiel 96 MB). `RenderPageToImage(Index, Scale)` geeft
+een pagina als afbeelding voor thumbnails of export.
 
 ## Ontwerpkeuzes
 

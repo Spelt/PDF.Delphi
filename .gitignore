@@ -25,3 +25,4 @@ __recovery/
 
 # Test corpus (point PDF_CORPUS_DIRS at a pdf.js checkout instead)
 Tests/Corpus/*.pdf
+Build/Demo/

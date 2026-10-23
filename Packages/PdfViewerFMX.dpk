@@ -1,0 +1,46 @@
+package PdfViewerFMX;
+
+{$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'TPdfViewer - FMX PDF viewer control (runtime)'}
+{$RUNONLY}
+{$IMPLICITBUILD ON}
+
+requires
+  rtl,
+  fmx,
+  Skia.Package.RTL,
+  Skia.Package.FMX,
+  PdfCore,
+  PdfRenderSkia;
+
+contains
+  Pdf.Viewer.Layout in '..\Source\Viewer\Pdf.Viewer.Layout.pas',
+  Pdf.Viewer.Cache in '..\Source\Viewer\Pdf.Viewer.Cache.pas',
+  Pdf.Viewer.RenderQueue in '..\Source\Viewer\Pdf.Viewer.RenderQueue.pas',
+  FMX.PdfViewer in '..\Source\Viewer\FMX.PdfViewer.pas';
+
+end.

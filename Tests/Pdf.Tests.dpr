@@ -33,6 +33,9 @@ uses
   Pdf.Font.CMap in '..\Source\Font\Pdf.Font.CMap.pas',
   Pdf.Font.Loader in '..\Source\Font\Pdf.Font.Loader.pas',
   Pdf.Render.Skia in '..\Source\Render\Pdf.Render.Skia.pas',
+  Pdf.Viewer.Layout in '..\Source\Viewer\Pdf.Viewer.Layout.pas',
+  Pdf.Viewer.Cache in '..\Source\Viewer\Pdf.Viewer.Cache.pas',
+  Pdf.Viewer.RenderQueue in '..\Source\Viewer\Pdf.Viewer.RenderQueue.pas',
   Pdf.Tests.Builder in 'Pdf.Tests.Builder.pas',
   Pdf.Tests.Lexer in 'Pdf.Tests.Lexer.pas',
   Pdf.Tests.Parser in 'Pdf.Tests.Parser.pas',
@@ -50,7 +53,8 @@ uses
   Pdf.Tests.Font.Type1 in 'Pdf.Tests.Font.Type1.pas',
   Pdf.Tests.Font.Tables in 'Pdf.Tests.Font.Tables.pas',
   Pdf.Tests.Font.CMap in 'Pdf.Tests.Font.CMap.pas',
-  Pdf.Tests.Text in 'Pdf.Tests.Text.pas';
+  Pdf.Tests.Text in 'Pdf.Tests.Text.pas',
+  Pdf.Tests.Viewer in 'Pdf.Tests.Viewer.pas';
 
 var
   Runner: ITestRunner;

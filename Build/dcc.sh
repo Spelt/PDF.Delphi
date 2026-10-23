@@ -18,7 +18,7 @@ for rc in "$ROOTU"/Resources/*.rc; do
 done
 DPR="$(cygpath -w "$1")"; shift
 "$BDS\\bin\\dcc64.exe" -B -Q -H \
-  -U"$BDS\\lib\\win64\\release;$BDS\\source\\DUnitX;$ROOT\\Source\\Core;$ROOT\\Source\\Render;$ROOT\\Source\\Font;$ROOT\\Tests" \
+  -U"$BDS\\lib\\win64\\release;$BDS\\source\\DUnitX;$ROOT\\Source\\Core;$ROOT\\Source\\Render;$ROOT\\Source\\Font;$ROOT\\Source\\Viewer;$ROOT\\Tests" \
   -I"$BDS\\source\\DUnitX" -R"$ROOT\\Resources" \
   "-NSSystem;System.Win;Winapi;Data;Xml" \
   -E"$OUT" -N0"$OUT" -NH"$OUT" "$@" "$DPR"
