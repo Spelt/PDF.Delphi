@@ -12,13 +12,6 @@ One engine, two frameworks: the same component for **VCL** and **FMX**, on every
 
 <sub>pdf.js (Apache 2.0) served as the reference for structure and edge cases; see `NOTICE`.</sub>
 
-## Quick start
-
-<p align="center">
-  <img src="docs/images/pdf-delphi-quickstart.png" alt="PDF.Delphi quick start" width="100%">
-</p>
-
-
 ## Requirements
 
 - Delphi 13.x with the bundled Skia (`System.Skia`, `FMX.Skia`,
@@ -30,6 +23,12 @@ One engine, two frameworks: the same component for **VCL** and **FMX**, on every
 
 It wil probably also work for Delphi 11 and 12 but you need to use Unit aliasing because the names of the used Skia units are different.
 
+
+## Quick start
+
+<p align="center">
+  <img src="docs/images/pdf-delphi-quickstart.png" alt="PDF.Delphi quick start" width="100%">
+</p>
 
 ## Components installation
 In Packages open the projectgroup PdfDelphi. Then: 
