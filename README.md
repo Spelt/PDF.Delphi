@@ -10,8 +10,6 @@ PDF.Delphi is a complete PDF engine written in pure Object Pascal (parser, fonts
 Drop `TPdfViewer` on a form, call `LoadFromFile`, and you're done: zoom, search, text selection, links, bookmarks and thumbnails included.
 One engine, two frameworks: the same component for **VCL** and **FMX**, on every platform FMX supports.
 
-<a href="https://github.com/sponsors/Spelt"><img src="docs/images/coffee.png" alt="Buy me a coffee" width="480"></a>
-
 <sub>pdf.js (Apache 2.0) served as the reference for structure and edge cases; see `NOTICE`.</sub>
 
 ## Requirements
@@ -51,7 +49,9 @@ Viewer.OnPageChange := ViewerPageChange;   // (Sender; PageIndex: Integer)
 Viewer.LoadFromFile('brochure.pdf');       // optioneel password as 2e parameter
 Viewer.GoToPage(3);
 ```
-
+<p>
+<a href="https://github.com/sponsors/Spelt"><img src="docs/images/coffee.png" alt="Buy me a coffee" width="480"></a>
+</p>
 Pages are rendered at `Zoom x screen scale` on a background thread; the UI
 thread only draws finished `ISkImage`s and shows the nearest cached rendition
 scaled while a sharp one is pending. `CacheLimitMB` bounds the memory
