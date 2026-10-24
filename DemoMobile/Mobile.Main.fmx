@@ -45,12 +45,12 @@ object MainForm: TMainForm
     TabOrder = 1
     object PrevButton: TSpeedButton
       Align = Left
+      StyledSettings = [Family, FontColor]
       Size.Width = 72.000000000000000000
       Size.Height = 56.000000000000000000
       Size.PlatformDefault = False
-      StyledSettings = [Family, FontColor]
-      TextSettings.Font.Size = 20.000000000000000000
       Text = #9664
+      TextSettings.Font.Size = 20.000000000000000000
       OnClick = PrevButtonClick
     end
     object PageLabel: TLabel
@@ -66,25 +66,28 @@ object MainForm: TMainForm
     end
     object NextButton: TSpeedButton
       Align = Right
+      StyledSettings = [Family, FontColor]
       Position.X = 318.000000000000000000
       Size.Width = 72.000000000000000000
       Size.Height = 56.000000000000000000
       Size.PlatformDefault = False
-      StyledSettings = [Family, FontColor]
-      TextSettings.Font.Size = 20.000000000000000000
       Text = #9654
+      TextSettings.Font.Size = 20.000000000000000000
       OnClick = NextButtonClick
     end
   end
   object Viewer: TPdfViewer
+    Touch.InteractiveGestures = [Zoom, DoubleTap]
     Align = Client
     Size.Width = 390.000000000000000000
     Size.Height = 616.000000000000000000
     Size.PlatformDefault = False
-    TabOrder = 2
+    MinZoom = 0.100000000000000000
+    MaxZoom = 16.000000000000000000
     PageGap = 6.000000000000000000
     PageMargin = 6.000000000000000000
     OnPageChange = ViewerPageChange
     TextSelectionEnabled = False
+    TabOrder = 2
   end
 end

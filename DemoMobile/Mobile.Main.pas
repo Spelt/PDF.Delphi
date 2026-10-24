@@ -9,7 +9,7 @@ interface
 uses
   System.SysUtils, System.Types, System.UITypes, System.Classes,
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.StdCtrls, FMX.Controls.Presentation,
-  FMX.PdfViewer;
+  FMX.PdfViewer, System.Skia, FMX.Skia;
 
 type
   TMainForm = class(TForm)
