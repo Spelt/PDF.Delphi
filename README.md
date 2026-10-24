@@ -81,6 +81,10 @@ Further viewer features:
   Text extraction briefly pauses the render thread, because the object model
   is not thread-safe. `SearchMatch(I)` and `GoToMatch(I)` expose the results
   for a result list.
+- Touch (Android, iOS): a finger always scrolls, also over text, with the
+  platform's momentum through FMX's `TAniCalculations` (`KineticScrolling`,
+  FMX only); pinch zoom scales the page smoothly and renders it sharp when
+  the fingers lift.
 - Input: mouse wheel scrolls (Ctrl+wheel zooms, Shift+wheel scrolls
   horizontally), drag pans, pinch and double-tap zoom on touch devices,
   keyboard navigation with the arrow, page and home/end keys, `+`/`-`/`0`.
