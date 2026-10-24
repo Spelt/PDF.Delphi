@@ -139,6 +139,7 @@ type
     FCursor: TCursor;
     FPinchStartZoom: Double;
     FPinchStartDistance: Integer;
+    FPinching: Boolean;
     FRedrawQueued: Integer;
     FPrefetchPages: Integer;
     FOnPageChange: TPdfPageChangeEvent;
@@ -182,6 +183,10 @@ type
     procedure QueueRedraw;
     function DeviceScale: Single;
     function RenderScale: Double;
+    /// <summary>Scale a page is rendered at: RenderScale, but no larger than lets one rendition fill a quarter of
+    /// the page cache (deep zoom on a phone would otherwise render images the cache cannot hold, again and again).</summary>
+    function PageRenderScale(Index: Integer): Double;
+    procedure EndPinch;
     procedure UpdateLayoutViewport;
     procedure ApplyZoomMode;
     procedure UpdateScrollBars;
@@ -226,7 +231,8 @@ type
     /// <summary>Keyboard input. Key is a vk code (System.UITypes), KeyChar the typed character (either may be 0).
     /// Returns True and clears both when the key was handled.</summary>
     function KeyDown(var Key: Word; var KeyChar: WideChar; Shift: TShiftState): Boolean;
-    /// <summary>Two-finger zoom; Distance is the finger distance in any unit, Center in logical pixels.</summary>
+    /// <summary>Two-finger zoom; Distance is the finger distance in any unit, Center in logical pixels. Between
+    /// ppBegin and ppEnd the pages are shown scaled from the renditions at hand; ppEnd renders them sharp.</summary>
     procedure Pinch(Phase: TPdfPinchPhase; Distance: Integer; const Center: TPointF);
     /// <summary>Double tap: zooms in at P from fit-width, otherwise back to fit-width.</summary>
     procedure DoubleTap(const P: TPointF);
@@ -615,6 +621,21 @@ begin
   Result := FZoom * DeviceScale;
 end;
 
+function TPdfViewerController.PageRenderScale(Index: Integer): Double;
+var
+  S: TSizeF;
+  Area: Double;
+begin
+  Result := RenderScale;
+  if (Index < 0) or (Index >= FLayout.PageCount) then
+    Exit;
+  S := FLayout.PageSizes[Index];
+  Area := S.Width * S.Height;
+  // 4 bytes per pixel, a rendition may take a quarter of the cache
+  if Area > 0 then
+    Result := Min(Result, Sqrt(FCache.MaxBytes / 4 / 4 / Area));
+end;
+
 function TPdfViewerController.ViewportRect: TRectF;
 var
   S: TSizeF;
@@ -810,27 +831,29 @@ procedure TPdfViewerController.RequestVisiblePages;
 var
   Visible: TArray<TPdfPageRect>;
   I, First, Last, P: Integer;
-  Scale, Center: Double;
+  Center: Double;
 begin
-  if FQueue = nil then
+  // While fingers pinch, the zoom changes every frame: renditions for those passing scales would be stale on
+  // arrival and push the shown ones out of the cache. The pages are drawn scaled until the pinch ends.
+  if (FQueue = nil) or FPinching then
     Exit;
-  Scale := RenderScale;
   Visible := FLayout.VisiblePages(FScrollX, FScrollY);
   if Length(Visible) = 0 then
     Exit;
   Center := FScrollY + FLayout.ViewportHeight / 2;
   for I := 0 to High(Visible) do
-    FQueue.Request(Visible[I].Index, Scale, Round(Abs(Visible[I].Rect.CenterPoint.Y - Center) / 100));
+    FQueue.Request(Visible[I].Index, PageRenderScale(Visible[I].Index),
+      Round(Abs(Visible[I].Rect.CenterPoint.Y - Center) / 100));
   First := Visible[0].Index;
   Last := Visible[High(Visible)].Index;
   for I := 1 to FPrefetchPages do
   begin
     P := Last + I;
     if P < FLayout.PageCount then
-      FQueue.Request(P, Scale, 1000 + I);
+      FQueue.Request(P, PageRenderScale(P), 1000 + I);
     P := First - I;
     if P >= 0 then
-      FQueue.Request(P, Scale, 1000 + I);
+      FQueue.Request(P, PageRenderScale(P), 1000 + I);
   end;
 end;
 
@@ -857,7 +880,6 @@ begin
   ACanvas.Save;
   try
     ACanvas.ClipRect(View);
-    Scale := RenderScale;
     Visible := FLayout.VisiblePages(FScrollX, FScrollY);
     Paint.AntiAlias := True;
     for I := 0 to High(Visible) do
@@ -873,8 +895,15 @@ begin
       end;
       Paint.Color := TAlphaColorRec.White;
       ACanvas.DrawRect(R, Paint);
+      Scale := PageRenderScale(Visible[I].Index);
       if FCache.Get(Visible[I].Index, Scale, Img) then
-        Sampling := TSkSamplingOptions.Create(TSkFilterMode.Nearest, TSkMipmapMode.None)
+      begin
+        // Pixel for pixel unless the rendition was capped and is shown enlarged
+        if SameValue(Scale, RenderScale, 1E-6) then
+          Sampling := TSkSamplingOptions.Create(TSkFilterMode.Nearest, TSkMipmapMode.None)
+        else
+          Sampling := TSkSamplingOptions.Create(TSkFilterMode.Linear, TSkMipmapMode.None);
+      end
       else if FCache.GetNearest(Visible[I].Index, Scale, Img, ImgScale) then
         Sampling := TSkSamplingOptions.Create(TSkFilterMode.Linear, TSkMipmapMode.Linear)
       else
@@ -1427,6 +1456,8 @@ var
   Link: TPdfAnnotation;
   Handled: Boolean;
 begin
+  // Lifted fingers also end a pinch whose end gesture did not arrive
+  EndPinch;
   FDragging := False;
   FSelecting := False;
   Link := FPressedLink;
@@ -1500,13 +1531,25 @@ begin
   case Phase of
     ppBegin:
       begin
+        FPinching := True;
         FPinchStartZoom := FZoom;
         FPinchStartDistance := Max(1, Distance);
       end;
     ppUpdate:
       if FPinchStartDistance > 0 then
         ZoomAt(FPinchStartZoom * Distance / FPinchStartDistance, Center);
+    ppEnd:
+      EndPinch;
   end;
+end;
+
+procedure TPdfViewerController.EndPinch;
+begin
+  if not FPinching then
+    Exit;
+  FPinching := False;
+  // The next paint requests sharp renditions at the final zoom
+  Redraw;
 end;
 
 procedure TPdfViewerController.DoubleTap(const P: TPointF);

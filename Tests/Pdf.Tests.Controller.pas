@@ -11,7 +11,7 @@ unit Pdf.Tests.Controller;
 interface
 
 uses
-  System.SysUtils, System.Types, System.Classes, System.UITypes, DUnitX.TestFramework,
+  System.SysUtils, System.Types, System.Classes, System.UITypes, System.Skia, DUnitX.TestFramework,
   Pdf.Viewer.Controller;
 
 type
@@ -35,6 +35,10 @@ type
     function TextPoint: TPointF;
     /// <summary>Drags from Start upwards by 6 steps of 20 pixels; Touch adds ssTouch.</summary>
     procedure Drag(Touch: Boolean; const Start: TPointF);
+    /// <summary>Paints into an offscreen surface, which requests the visible pages from the render queue.</summary>
+    procedure Paint;
+    /// <summary>Lets the render thread work and runs its queued notifications until Done or the timeout.</summary>
+    function WaitFor(const Done: TFunc<Boolean>; TimeoutMs: Integer): Boolean;
   public
     [Setup] procedure Setup;
     [TearDown] procedure TearDown;
@@ -43,6 +47,8 @@ type
     [Test] procedure TouchDrag_OnText_ScrollsWithoutSelecting;
     [Test] procedure HostPansTouch_TouchDragLeavesScrollToHost;
     [Test] procedure HostPansTouch_MouseDragStillScrolls;
+    [Test] procedure Pinch_RendersOnlyTheFinalZoom;
+    [Test] procedure DeepZoom_RenditionFitsTheCache;
   end;
 
 implementation
@@ -145,6 +151,83 @@ begin
     FController.MouseMove(Shift, P);
   end;
   FController.MouseUp(TMouseButton.mbLeft, Shift, P);
+end;
+
+procedure TPdfViewerControllerTests.Paint;
+var
+  Surface: ISkSurface;
+begin
+  Surface := TSkSurface.MakeRaster(400, 600);
+  FController.Draw(Surface.Canvas, TRectF.Create(0, 0, 400, 600));
+end;
+
+function TPdfViewerControllerTests.WaitFor(const Done: TFunc<Boolean>; TimeoutMs: Integer): Boolean;
+var
+  Elapsed: Integer;
+begin
+  Elapsed := 0;
+  repeat
+    CheckSynchronize(10);
+    Result := Done();
+    if Result then
+      Exit;
+    Sleep(10);
+    Inc(Elapsed, 20);
+  until Elapsed >= TimeoutMs;
+end;
+
+procedure TPdfViewerControllerTests.Pinch_RendersOnlyTheFinalZoom;
+var
+  Center: TPointF;
+  Passing: array[0..1] of Double;
+  FinalZoom: Double;
+begin
+  Paint;
+  Assert.IsTrue(WaitFor(
+    function: Boolean
+    begin
+      Result := FController.Cache.Contains(0, FController.Zoom);
+    end, 5000), 'page 1 rendered at the starting zoom');
+  Center := TPointF.Create(200, 300);
+  FController.Pinch(ppBegin, 100, Center);
+  FController.Pinch(ppUpdate, 150, Center);
+  Passing[0] := FController.Zoom;
+  Paint;
+  FController.Pinch(ppUpdate, 200, Center);
+  Passing[1] := FController.Zoom;
+  Paint;
+  FController.Pinch(ppUpdate, 230, Center);
+  FinalZoom := FController.Zoom;
+  Paint;
+  WaitFor(function: Boolean begin Result := False end, 400);
+  Assert.IsFalse(FController.Cache.Contains(0, Passing[0]), 'nothing rendered while pinching');
+  Assert.IsFalse(FController.Cache.Contains(0, Passing[1]), 'nothing rendered while pinching');
+  Assert.IsFalse(FController.Cache.Contains(0, FinalZoom), 'nothing rendered before the pinch ends');
+  FController.Pinch(ppEnd, 230, Center);
+  Paint;
+  Assert.IsTrue(WaitFor(
+    function: Boolean
+    begin
+      Result := FController.Cache.Contains(0, FinalZoom);
+    end, 5000), 'the final zoom is rendered once the pinch ends');
+end;
+
+procedure TPdfViewerControllerTests.DeepZoom_RenditionFitsTheCache;
+var
+  Img: ISkImage;
+  ImgScale: Double;
+begin
+  FController.CacheLimitMB := 4;
+  FController.ZoomAt(8, TPointF.Create(0, 0));
+  Paint;
+  Assert.IsTrue(WaitFor(
+    function: Boolean
+    begin
+      Result := FController.TryGetNearestPageImage(0, FController.Zoom, Img, ImgScale);
+    end, 5000), 'a rendition of page 1 is cached despite the deep zoom');
+  Assert.IsTrue(ImgScale < FController.Zoom, 'rendered below the zoom');
+  Assert.IsTrue(Int64(Img.Width) * Img.Height * 4 <= FController.Cache.MaxBytes div 4,
+    Format('the rendition takes at most a quarter of the cache (%d x %d)', [Img.Width, Img.Height]));
 end;
 
 procedure TPdfViewerControllerTests.MouseDrag_OnBackground_Scrolls;
