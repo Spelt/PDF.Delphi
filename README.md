@@ -50,7 +50,7 @@ Viewer.LoadFromFile('brochure.pdf');       // optioneel password as 2e parameter
 Viewer.GoToPage(3);
 ```
 <p>
-<a href="https://github.com/sponsors/Spelt"><img src="docs/images/coffee.png" alt="Buy me a coffee" width="480"></a>
+<a href="https://github.com/sponsors/Spelt"><img src="docs/images/coffee.png" alt="Buy me a coffee" width="300"></a>
 </p>
 Pages are rendered at `Zoom x screen scale` on a background thread; the UI
 thread only draws finished `ISkImage`s and shows the nearest cached rendition
