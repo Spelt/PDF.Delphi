@@ -10,6 +10,9 @@ PDF.Delphi is a complete PDF engine written in pure Object Pascal (parser, fonts
 Drop `TPdfViewer` on a form, call `LoadFromFile`, and you're done: zoom, search, text selection, links, bookmarks and thumbnails included.
 One engine, two frameworks: the same component for **VCL** and **FMX**, on every platform FMX supports.
 
+[![Sponsor PDF.Delphi](https://img.shields.io/badge/Sponsor-%E2%9D%A4-db61a2?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/Spelt)
+If PDF.Delphi saves you time, sponsoring keeps it going.
+
 <sub>pdf.js (Apache 2.0) served as the reference for structure and edge cases; see `NOTICE`.</sub>
 
 ## Requirements
