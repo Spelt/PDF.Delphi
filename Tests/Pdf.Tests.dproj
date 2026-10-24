@@ -91,6 +91,7 @@
     <DCCReference Include="..\Source\Viewer\Pdf.Viewer.Layout.pas"/>
     <DCCReference Include="..\Source\Viewer\Pdf.Viewer.Cache.pas"/>
     <DCCReference Include="..\Source\Viewer\Pdf.Viewer.RenderQueue.pas"/>
+    <DCCReference Include="..\Source\Viewer\Pdf.Viewer.Controller.pas"/>
     <DCCReference Include="Pdf.Tests.Builder.pas"/>
     <DCCReference Include="Pdf.Tests.Lexer.pas"/>
     <DCCReference Include="Pdf.Tests.Parser.pas"/>
@@ -115,6 +116,7 @@
     <DCCReference Include="Pdf.Tests.Codec.JBIG2.pas"/>
     <DCCReference Include="Pdf.Tests.Codec.JPX.pas"/>
     <DCCReference Include="Pdf.Tests.Mesh.pas"/>
+    <DCCReference Include="Pdf.Tests.Controller.pas"/>
     <BuildConfiguration Include="Base">
       <Key>Base</Key>
     </BuildConfiguration>

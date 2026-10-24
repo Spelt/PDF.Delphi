@@ -5,7 +5,8 @@
   (Pdf.Viewer.RenderQueue) into an LRU cache (Pdf.Viewer.Cache); the UI
   thread only draws finished ISkImages. While a sharp image is pending the
   nearest cached rendition is shown scaled. Zoom, FitWidth, FitPage, pinch
-  to zoom, mouse wheel, drag panning, scroll bars and keyboard navigation.
+  to zoom, mouse wheel, drag panning (touch drags with the platform's
+  momentum through TAniCalculations), scroll bars and keyboard navigation.
   The behaviour lives in TPdfViewerController (Pdf.Viewer.Controller), which
   the VCL TPdfViewer (Vcl.PdfViewer) shares; this unit adds the FMX control,
   its scroll bars, input and clipboard.
@@ -17,7 +18,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.Types, System.UITypes, System.Math, System.Generics.Collections,
   System.Skia,
-  FMX.Types, FMX.Controls, FMX.Graphics, FMX.StdCtrls, FMX.Skia, FMX.Platform,
+  FMX.Types, FMX.Controls, FMX.Graphics, FMX.StdCtrls, FMX.Skia, FMX.Platform, FMX.InertialMovement,
   Pdf.Core.Document, Pdf.Core.Navigation, Pdf.Render.Text, Pdf.Viewer.Layout, Pdf.Viewer.Cache,
   Pdf.Viewer.Controller;
 
@@ -31,7 +32,20 @@ type
   private
     FController: TPdfViewerController;
     FVScroll, FHScroll: TScrollBar;
+    // Touch drags scroll through FMX's own inertial engine, with the platform's momentum
+    FAni: TAniCalculations;
+    FAniAnimation: Boolean;
+    FApplyingAni: Boolean;
+    FKineticScrolling: Boolean;
     procedure ScrollBarChanged(Sender: TObject);
+    procedure SetKineticScrolling(const Value: Boolean);
+    procedure AniChanged(Sender: TObject);
+    procedure ControllerChanged(Sender: TObject; Change: TPdfViewerChange);
+    procedure UpdateAniTargets;
+    /// <summary>Ends a running momentum animation where it is.</summary>
+    procedure StopAni;
+    /// <summary>Ends a touch drag without momentum (a pinch took over).</summary>
+    procedure CancelAniTouch;
     { IPdfControlHost }
     procedure InvalidateHost;
     function HostSize: TSizeF;
@@ -97,11 +111,22 @@ type
     property OnPaint;
     property OnResize;
     property OnResized;
+    /// <summary>Touch drags scroll with the platform's momentum (FMX's TAniCalculations, as in TScrollBox):
+    /// released while moving, the document keeps scrolling and slows down. Mouse drags are not affected.</summary>
+    property KineticScrolling: Boolean read FKineticScrolling write SetKineticScrolling default True;
   end;
 
 implementation
 
 {$I Pdf.Viewer.ApiImpl.inc}
+
+function PlatformScrollAnimation: Boolean;
+var
+  Svc: IFMXSystemInformationService;
+begin
+  Result := TPlatformServices.Current.SupportsPlatformService(IFMXSystemInformationService, Svc) and
+    (TScrollingBehaviour.Animation in Svc.GetScrollingBehaviour);
+end;
 
 { TPdfViewer }
 
@@ -127,6 +152,17 @@ begin
   FHScroll.OnChange := ScrollBarChanged;
 
   FController := TPdfViewerController.Create(Self, Self);
+  FController.AddChangeListener(ControllerChanged);
+
+  FAniAnimation := PlatformScrollAnimation;
+  FAni := TAniCalculations.Create(Self);
+  FAni.TouchTracking := [ttVertical, ttHorizontal];
+  FAni.BoundsAnimation := False; // the viewer clamps its scroll position: an elastic overscroll would not show
+  FAni.Animation := FAniAnimation;
+  FAni.OnChanged := AniChanged;
+  FKineticScrolling := True;
+  FController.HostPansTouch := True;
+
   HitTest := True;
   CanFocus := True;
   TabStop := True;
@@ -139,8 +175,83 @@ end;
 
 destructor TPdfViewer.Destroy;
 begin
+  StopAni;
+  FreeAndNil(FAni);
   FreeAndNil(FController);
   inherited;
+end;
+
+{ Kinetic scrolling }
+
+procedure TPdfViewer.SetKineticScrolling(const Value: Boolean);
+begin
+  if Value = FKineticScrolling then
+    Exit;
+  FKineticScrolling := Value;
+  if not Value then
+  begin
+    CancelAniTouch;
+    StopAni;
+  end;
+  FController.HostPansTouch := Value;
+end;
+
+procedure TPdfViewer.UpdateAniTargets;
+var
+  Targets: array[0..1] of TAniCalculations.TTarget;
+begin
+  Targets[0].TargetType := TAniCalculations.TTargetType.Min;
+  Targets[0].Point := TPointD.Create(0, 0);
+  Targets[1].TargetType := TAniCalculations.TTargetType.Max;
+  Targets[1].Point := TPointD.Create(FController.Layout.MaxScrollX, FController.Layout.MaxScrollY);
+  FAni.SetTargets(Targets);
+end;
+
+procedure TPdfViewer.AniChanged(Sender: TObject);
+begin
+  if FApplyingAni or (FController = nil) then
+    Exit;
+  FApplyingAni := True;
+  try
+    FController.ScrollTo(FAni.ViewportPosition.X, FAni.ViewportPosition.Y);
+  finally
+    FApplyingAni := False;
+  end;
+end;
+
+procedure TPdfViewer.ControllerChanged(Sender: TObject; Change: TPdfViewerChange);
+begin
+  // Scrolling from anywhere else (buttons, wheel, keys, navigation) or a new layout ends the momentum
+  if not FApplyingAni and (Change in [vcDocument, vcZoom, vcScroll, vcRotation, vcDisplayMode]) then
+    StopAni;
+end;
+
+procedure TPdfViewer.StopAni;
+begin
+  if (FAni = nil) or not FAniAnimation or FAni.Down then
+    Exit;
+  FApplyingAni := True;
+  try
+    // Switching the animation off clears the velocity and stops the timer
+    FAni.Animation := False;
+    FAni.Animation := True;
+  finally
+    FApplyingAni := False;
+  end;
+end;
+
+procedure TPdfViewer.CancelAniTouch;
+begin
+  if (FAni = nil) or not FAni.Down then
+    Exit;
+  FApplyingAni := True;
+  try
+    FAni.Animation := False;
+    FAni.Down := False;
+    FAni.Animation := FAniAnimation;
+  finally
+    FApplyingAni := False;
+  end;
 end;
 
 { IPdfControlHost }
@@ -227,18 +338,36 @@ begin
   inherited;
   if CanFocus then
     SetFocus;
+  if (Button = TMouseButton.mbLeft) and (ssTouch in Shift) and FKineticScrolling then
+  begin
+    // A touch catches a running fling and starts tracking from the current scroll position
+    StopAni;
+    UpdateAniTargets;
+    FApplyingAni := True;
+    try
+      FAni.ViewportPosition := TPointD.Create(FController.ScrollX, FController.ScrollY);
+    finally
+      FApplyingAni := False;
+    end;
+    FAni.Averaging := True;
+    FAni.MouseDown(X, Y);
+  end;
   FController.MouseDown(Button, Shift, TPointF.Create(X, Y));
 end;
 
 procedure TPdfViewer.MouseMove(Shift: TShiftState; X, Y: Single);
 begin
   inherited;
+  if FAni.Down then
+    FAni.MouseMove(X, Y);
   FController.MouseMove(Shift, TPointF.Create(X, Y));
 end;
 
 procedure TPdfViewer.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Single);
 begin
   inherited;
+  if FAni.Down then
+    FAni.MouseUp(X, Y);
   FController.MouseUp(Button, Shift, TPointF.Create(X, Y));
 end;
 
@@ -264,7 +393,11 @@ begin
   if EventInfo.GestureID = igiZoom then
   begin
     if TInteractiveGestureFlag.gfBegin in EventInfo.Flags then
-      Phase := ppBegin
+    begin
+      // The first finger was being tracked as a drag: the pinch takes over without a fling
+      CancelAniTouch;
+      Phase := ppBegin;
+    end
     else if TInteractiveGestureFlag.gfEnd in EventInfo.Flags then
       Phase := ppEnd
     else
@@ -274,6 +407,7 @@ begin
   end
   else if EventInfo.GestureID = igiDoubleTap then
   begin
+    StopAni;
     FController.DoubleTap(AbsoluteToLocal(EventInfo.Location));
     Handled := True;
   end

@@ -115,6 +115,8 @@ type
     FCacheLimitMB: Integer;
     FFileName: string;
     FDragging, FDragMoved: Boolean;
+    FDragIsTouch: Boolean;
+    FHostPansTouch: Boolean;
     FNavigation: TPdfNavigation;
     FAnnots: TObjectDictionary<Integer, TObjectList<TPdfAnnotation>>;
     FTextPages: TObjectDictionary<Integer, TPdfTextPage>;
@@ -300,6 +302,9 @@ type
     property PrefetchPages: Integer read FPrefetchPages write FPrefetchPages;
     property TextSelectionEnabled: Boolean read FTextSelectionEnabled write FTextSelectionEnabled;
     property LinksEnabled: Boolean read FLinksEnabled write FLinksEnabled;
+    /// <summary>The host scrolls touch drags itself (FMX: with platform momentum through TAniCalculations) and
+    /// calls ScrollTo; the controller then only tracks those drags for link taps.</summary>
+    property HostPansTouch: Boolean read FHostPansTouch write FHostPansTouch;
     property SelectionColor: TAlphaColor read FSelectionColor write FSelectionColor;
     property HighlightColor: TAlphaColor read FHighlightColor write FHighlightColor;
     property ActiveHighlightColor: TAlphaColor read FActiveHighlightColor write FActiveHighlightColor;
@@ -1329,12 +1334,14 @@ begin
   FDragging := True;
   FDragMoved := False;
   FSelecting := False;
+  FDragIsTouch := ssTouch in Shift;
   FDragStart := P;
   FDragScroll := TPointF.Create(FScrollX, FScrollY);
   FPressedLink := nil;
   if FLinksEnabled then
     FPressedLink := LinkAt(P);
-  if (FPressedLink = nil) and FTextSelectionEnabled then
+  // A finger dragging over text scrolls: on a touch screen nearly every drag starts on text
+  if (FPressedLink = nil) and FTextSelectionEnabled and not FDragIsTouch then
   begin
     PP := ControlToPagePoint(P, PageIdx);
     if PageIdx >= 0 then
@@ -1408,7 +1415,7 @@ begin
         end;
       end;
     end
-    else if FPressedLink = nil then
+    else if (FPressedLink = nil) and not (FDragIsTouch and FHostPansTouch) then
       SetScroll(FDragScroll.X - (P.X - FDragStart.X), FDragScroll.Y - (P.Y - FDragStart.Y));
   end
   else

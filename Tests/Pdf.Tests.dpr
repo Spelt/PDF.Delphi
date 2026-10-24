@@ -44,6 +44,7 @@ uses
   Pdf.Viewer.Layout in '..\Source\Viewer\Pdf.Viewer.Layout.pas',
   Pdf.Viewer.Cache in '..\Source\Viewer\Pdf.Viewer.Cache.pas',
   Pdf.Viewer.RenderQueue in '..\Source\Viewer\Pdf.Viewer.RenderQueue.pas',
+  Pdf.Viewer.Controller in '..\Source\Viewer\Pdf.Viewer.Controller.pas',
   Pdf.Tests.Builder in 'Pdf.Tests.Builder.pas',
   Pdf.Tests.Lexer in 'Pdf.Tests.Lexer.pas',
   Pdf.Tests.Parser in 'Pdf.Tests.Parser.pas',
@@ -67,7 +68,8 @@ uses
   Pdf.Tests.Codec.CCITT in 'Pdf.Tests.Codec.CCITT.pas',
   Pdf.Tests.Codec.JBIG2 in 'Pdf.Tests.Codec.JBIG2.pas',
   Pdf.Tests.Codec.JPX in 'Pdf.Tests.Codec.JPX.pas',
-  Pdf.Tests.Mesh in 'Pdf.Tests.Mesh.pas';
+  Pdf.Tests.Mesh in 'Pdf.Tests.Mesh.pas',
+  Pdf.Tests.Controller in 'Pdf.Tests.Controller.pas';
 
 var
   Runner: ITestRunner;
