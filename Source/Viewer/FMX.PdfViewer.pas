@@ -18,7 +18,7 @@ interface
 uses
   System.SysUtils, System.Classes, System.Types, System.UITypes, System.Math, System.Generics.Collections,
   System.Skia,
-  FMX.Types, FMX.Controls, FMX.Graphics, FMX.StdCtrls, FMX.Skia, FMX.Platform, FMX.InertialMovement,
+  FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.StdCtrls, FMX.Skia, FMX.Platform, FMX.InertialMovement,
   Pdf.Core.Document, Pdf.Core.Navigation, Pdf.Render.Text, Pdf.Viewer.Layout, Pdf.Viewer.Cache,
   Pdf.Viewer.Controller;
 
@@ -37,6 +37,13 @@ type
     FAniAnimation: Boolean;
     FApplyingAni: Boolean;
     FKineticScrolling: Boolean;
+    // FMX reports the number of fingers only to the form (OnTouch); the viewer chains into it to notice a second
+    // finger, because the mouse events then carry the position of either finger
+    FTouchForm: TCommonCustomForm;
+    FPrevFormTouch: TTouchEvent;
+    procedure HookFormTouch;
+    procedure UnhookFormTouch;
+    procedure FormTouch(Sender: TObject; const Touches: TTouches; const Action: TTouchAction);
     procedure ScrollBarChanged(Sender: TObject);
     procedure SetKineticScrolling(const Value: Boolean);
     procedure AniChanged(Sender: TObject);
@@ -64,6 +71,7 @@ type
     procedure MouseWheel(Shift: TShiftState; WheelDelta: Integer; var Handled: Boolean); override;
     procedure KeyDown(var Key: Word; var KeyChar: WideChar; Shift: TShiftState); override;
     procedure DoGesture(const EventInfo: TGestureEventInfo; var Handled: Boolean); override;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -175,6 +183,7 @@ end;
 
 destructor TPdfViewer.Destroy;
 begin
+  UnhookFormTouch;
   StopAni;
   FreeAndNil(FAni);
   FreeAndNil(FController);
@@ -251,6 +260,59 @@ begin
     FAni.Animation := FAniAnimation;
   finally
     FApplyingAni := False;
+  end;
+end;
+
+function SameMethod(const A, B: TTouchEvent): Boolean;
+begin
+  Result := (TMethod(A).Code = TMethod(B).Code) and (TMethod(A).Data = TMethod(B).Data);
+end;
+
+procedure TPdfViewer.HookFormTouch;
+var
+  Form: TCommonCustomForm;
+begin
+  if (Root = nil) or not (Root.GetObject is TCommonCustomForm) then
+    Exit;
+  Form := TCommonCustomForm(Root.GetObject);
+  if (Form = FTouchForm) and SameMethod(Form.OnTouch, FormTouch) then
+    Exit;
+  UnhookFormTouch;
+  FTouchForm := Form;
+  FTouchForm.FreeNotification(Self);
+  // Keep the application's own handler: FormTouch calls it first
+  FPrevFormTouch := FTouchForm.OnTouch;
+  FTouchForm.OnTouch := FormTouch;
+end;
+
+procedure TPdfViewer.UnhookFormTouch;
+begin
+  if FTouchForm = nil then
+    Exit;
+  if SameMethod(FTouchForm.OnTouch, FormTouch) then
+    FTouchForm.OnTouch := FPrevFormTouch;
+  FTouchForm.RemoveFreeNotification(Self);
+  FTouchForm := nil;
+  FPrevFormTouch := nil;
+end;
+
+procedure TPdfViewer.FormTouch(Sender: TObject; const Touches: TTouches; const Action: TTouchAction);
+begin
+  if Assigned(FPrevFormTouch) then
+    FPrevFormTouch(Sender, Touches, Action);
+  // A second finger: from now on the mouse events of this touch carry the position of either finger, which
+  // would pan the page by the distance between them. The pinch takes over; the drag ends without a fling.
+  if (Length(Touches) > 1) and (FAni <> nil) and FAni.Down then
+    CancelAniTouch;
+end;
+
+procedure TPdfViewer.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited;
+  if (Operation = opRemove) and (AComponent = FTouchForm) then
+  begin
+    FTouchForm := nil;
+    FPrevFormTouch := nil;
   end;
 end;
 
@@ -351,6 +413,7 @@ begin
     end;
     FAni.Averaging := True;
     FAni.MouseDown(X, Y);
+    HookFormTouch;
   end;
   FController.MouseDown(Button, Shift, TPointF.Create(X, Y));
 end;
