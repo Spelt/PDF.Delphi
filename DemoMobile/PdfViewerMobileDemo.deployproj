@@ -135,10 +135,28 @@
             <RemoteCommand/>
             <Overwrite>True</Overwrite>
         </DeployFile>
+        <DeployFile Include="$(BDS)\lib\android\debug\mips\libnative-activity.so" Condition="'$(Config)'=='Release'">
+            <RemoteDir>PdfViewerMobileDemo\library\lib\mips\</RemoteDir>
+            <RemoteName>libPdfViewerMobileDemo.so</RemoteName>
+            <DeployClass>AndroidLibnativeMipsFile</DeployClass>
+            <Operation>1</Operation>
+            <LocalCommand/>
+            <RemoteCommand/>
+            <Overwrite>True</Overwrite>
+        </DeployFile>
         <DeployFile Include="..\Build\DemoMobile\Android64\Release\splash_image_def-v21.xml" Condition="'$(Config)'=='Release'">
             <RemoteDir>PdfViewerMobileDemo\res\drawable-anydpi-v21\</RemoteDir>
             <RemoteName>splash_image_def.xml</RemoteName>
             <DeployClass>AndroidSplashImageDefV21</DeployClass>
+            <Operation>1</Operation>
+            <LocalCommand/>
+            <RemoteCommand/>
+            <Overwrite>True</Overwrite>
+        </DeployFile>
+        <DeployFile Include="$(BDS)\lib\android\debug\armeabi-v7a\libnative-activity.so" Condition="'$(Config)'=='Release'">
+            <RemoteDir>PdfViewerMobileDemo\library\lib\armeabi-v7a\</RemoteDir>
+            <RemoteName>libPdfViewerMobileDemo.so</RemoteName>
+            <DeployClass>AndroidLibnativeArmeabiv7aFile</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
             <RemoteCommand/>
@@ -166,15 +184,6 @@
             <RemoteDir>PdfViewerMobileDemo\res\drawable\</RemoteDir>
             <RemoteName>ic_launcher_foreground.xml</RemoteName>
             <DeployClass>Android_AdaptiveIconForeground</DeployClass>
-            <Operation>1</Operation>
-            <LocalCommand/>
-            <RemoteCommand/>
-            <Overwrite>True</Overwrite>
-        </DeployFile>
-        <DeployFile Include="$(BDS)\lib\android\debug\armeabi\libnative-activity.so" Condition="'$(Config)'=='Release'">
-            <RemoteDir>PdfViewerMobileDemo\library\lib\armeabi\</RemoteDir>
-            <RemoteName>libPdfViewerMobileDemo.so</RemoteName>
-            <DeployClass>AndroidLibnativeArmeabiFile</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
             <RemoteCommand/>
@@ -252,15 +261,6 @@
             <RemoteCommand/>
             <Overwrite>True</Overwrite>
         </DeployFile>
-        <DeployFile Include="$(BDS)\lib\android\debug\armeabi-v7a\libnative-activity.so" Condition="'$(Config)'=='Release'">
-            <RemoteDir>PdfViewerMobileDemo\library\lib\armeabi-v7a\</RemoteDir>
-            <RemoteName>libPdfViewerMobileDemo.so</RemoteName>
-            <DeployClass>AndroidLibnativeArmeabiv7aFile</DeployClass>
-            <Operation>1</Operation>
-            <LocalCommand/>
-            <RemoteCommand/>
-            <Overwrite>True</Overwrite>
-        </DeployFile>
         <DeployFile Include="..\Build\DemoMobile\Android64\Release\styles-v31.xml" Condition="'$(Config)'=='Release'">
             <RemoteDir>PdfViewerMobileDemo\res\values-v31\</RemoteDir>
             <RemoteName>styles.xml</RemoteName>
@@ -333,6 +333,15 @@
             <RemoteCommand/>
             <Overwrite>True</Overwrite>
         </DeployFile>
+        <DeployFile Include="$(BDS)\lib\android\debug\armeabi\libnative-activity.so" Condition="'$(Config)'=='Release'">
+            <RemoteDir>PdfViewerMobileDemo\library\lib\armeabi\</RemoteDir>
+            <RemoteName>libPdfViewerMobileDemo.so</RemoteName>
+            <DeployClass>AndroidLibnativeArmeabiFile</DeployClass>
+            <Operation>1</Operation>
+            <LocalCommand/>
+            <RemoteCommand/>
+            <Overwrite>True</Overwrite>
+        </DeployFile>
         <DeployFile Include="$(ProjectName).Artwork\Android\FM_LauncherIcon_72x72.png" Condition="'$(Config)'=='Release'">
             <RemoteDir>PdfViewerMobileDemo\res\drawable-hdpi\</RemoteDir>
             <RemoteName>ic_launcher.png</RemoteName>
@@ -364,15 +373,6 @@
             <RemoteDir>PdfViewerMobileDemo\res\drawable-hdpi\</RemoteDir>
             <RemoteName>ic_notification.png</RemoteName>
             <DeployClass>Android_NotificationIcon36</DeployClass>
-            <Operation>1</Operation>
-            <LocalCommand/>
-            <RemoteCommand/>
-            <Overwrite>True</Overwrite>
-        </DeployFile>
-        <DeployFile Include="$(BDS)\lib\android\debug\mips\libnative-activity.so" Condition="'$(Config)'=='Release'">
-            <RemoteDir>PdfViewerMobileDemo\library\lib\mips\</RemoteDir>
-            <RemoteName>libPdfViewerMobileDemo.so</RemoteName>
-            <DeployClass>AndroidLibnativeMipsFile</DeployClass>
             <Operation>1</Operation>
             <LocalCommand/>
             <RemoteCommand/>
