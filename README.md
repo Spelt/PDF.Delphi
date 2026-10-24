@@ -11,9 +11,8 @@ Drop `TPdfViewer` on a form, call `LoadFromFile`, and you're done: zoom, search,
 One engine, two frameworks: the same component for **VCL** and **FMX**, on every platform FMX supports.
 
 <p>
-<a href="https://github.com/sponsors/Spelt"><img src="docs/images/coffeeBadge.png" alt="Buy me a coffee" width="100"></a>
+<a href="https://github.com/sponsors/Spelt"><img src="docs/images/coffeeBadge.png" alt="Buy me a coffee" width="200"></a>
 </p>
-
 
 <sub>pdf.js (Apache 2.0) served as the reference for structure and edge cases; see `NOTICE`.</sub>
 
