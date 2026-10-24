@@ -108,6 +108,17 @@ iOS (it also runs on Windows): it opens the sample `test.pdf`, embedded as a
 resource so that nothing has to be deployed, with pinch to zoom, double tap,
 dragging, a fit-width button and previous/next page buttons.
 
+For performance on mobile devices, the demo switches FMX to the Skia canvas
+with the GPU back ends before the application starts (in the `.dpr`, with
+`FMX.Types` and `FMX.Skia` in the uses clause). The same settings can help in
+your own apps:
+
+```pascal
+GlobalUseSkia := True;   // FMX draws through Skia
+GlobalUseMetal := True;  // GPU rendering with Metal on iOS and macOS
+GlobalUseVulkan := True; // GPU rendering with Vulkan on Android
+```
+
 
 ## PDF.Delphi
 PDF.Delphi is released under the Apache 2.0 license.
