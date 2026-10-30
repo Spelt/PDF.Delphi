@@ -36,6 +36,9 @@ type
     FAni: TAniCalculations;
     FAniAnimation: Boolean;
     FApplyingAni: Boolean;
+    // True while FAni drives the scroll position; its timer also ticks after a stop, with a position that is old
+    FAniActive: Boolean;
+    FAniScroll: TPointD;   // scroll position FAni set last, to notice scrolling from elsewhere
     FKineticScrolling: Boolean;
     // FMX reports the number of fingers only to the form (OnTouch); the viewer chains into it to notice a second
     // finger, because the mouse events then carry the position of either finger
@@ -218,11 +221,19 @@ end;
 
 procedure TPdfViewer.AniChanged(Sender: TObject);
 begin
-  if FApplyingAni or (FController = nil) then
+  if FApplyingAni or not FAniActive or (FController = nil) then
     Exit;
+  // Zooming and fit modes move the page without a vcScroll: a fling must not pull it back
+  if not FAni.Down and ((Abs(FController.ScrollX - FAniScroll.X) > 0.5) or
+    (Abs(FController.ScrollY - FAniScroll.Y) > 0.5)) then
+  begin
+    StopAni;
+    Exit;
+  end;
   FApplyingAni := True;
   try
     FController.ScrollTo(FAni.ViewportPosition.X, FAni.ViewportPosition.Y);
+    FAniScroll := TPointD.Create(FController.ScrollX, FController.ScrollY);
   finally
     FApplyingAni := False;
   end;
@@ -237,11 +248,14 @@ end;
 
 procedure TPdfViewer.StopAni;
 begin
-  if (FAni = nil) or not FAniAnimation or FAni.Down then
+  if (FAni = nil) or FAni.Down then
+    Exit;
+  FAniActive := False;
+  if not FAniAnimation then
     Exit;
   FApplyingAni := True;
   try
-    // Switching the animation off clears the velocity and stops the timer
+    // Switching the animation off clears the velocity
     FAni.Animation := False;
     FAni.Animation := True;
   finally
@@ -253,6 +267,7 @@ procedure TPdfViewer.CancelAniTouch;
 begin
   if (FAni = nil) or not FAni.Down then
     Exit;
+  FAniActive := False;
   FApplyingAni := True;
   try
     FAni.Animation := False;
@@ -411,6 +426,8 @@ begin
     finally
       FApplyingAni := False;
     end;
+    FAniScroll := TPointD.Create(FController.ScrollX, FController.ScrollY);
+    FAniActive := True;
     FAni.Averaging := True;
     FAni.MouseDown(X, Y);
     HookFormTouch;
